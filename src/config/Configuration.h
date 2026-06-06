@@ -95,6 +95,8 @@ extern uint8_t led;
 extern bool led_i;
 extern const uint8_t ledblinkduration;
 
+extern char marstek_hostnames[256];
+
 // Wifi
 extern char wifi_hot[6];
 extern bool wifo_hot_flag;
@@ -130,7 +132,7 @@ extern bool dataSHRDZM;
 extern bool dataHTTP;
 extern bool dataSUNSPEC;
 extern bool dataTIBBERPULSE;
-
+extern bool batteriesMarstek;
 extern Preferences preferences;
 
 

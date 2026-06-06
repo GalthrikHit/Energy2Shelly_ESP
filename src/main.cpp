@@ -10,6 +10,8 @@
 // Protocol parsers
 #include "parsers/Parsers.h" 
 
+#include "batteries/marstek_venus_e.h"
+
 // RPC handlers
 #include "rpc/RpcHandlers.h"
 #include "rpc/RpcComm.h"
@@ -234,6 +236,11 @@ void setup(void) {
   // Set up mDNS responder
   setupMdns();
 
+
+  if (batteriesMarstek) {
+     setupMarstek(marstek_hostnames, 4000);
+  }
+
   startMillis = millis();
 }
 
@@ -285,6 +292,10 @@ void loop() {
       parseTibberPulse();
       startMillis = currentMillis;
     }
+  }
+  if (batteriesMarstek) {
+    double totalpower=PhasePower[0].power+PhasePower[1].power+PhasePower[2].power;
+    Marstek_battery( (int) totalpower);
   }
   handleblinkled();
 }

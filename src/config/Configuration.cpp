@@ -63,6 +63,9 @@ const uint8_t ledblinkduration = 50;
 char  wifi_hot[6];
 bool wifi_hot_flag = false;
 
+// Marstek Venus E battery settings
+char marstek_hostnames[256] = ""; // list of hostnames or IP addresses of the Marstek Venus E batteries, separated by semicolons, e.g. "marstek-1.local;marstek-2.local" or "
+
 // SMA Multicast IP and Port
 unsigned int multicastPort = 9522;  // local port to listen on
 IPAddress multicastIP(239, 12, 255, 254);
@@ -94,6 +97,7 @@ bool dataSHRDZM = false;
 bool dataHTTP = false;
 bool dataSUNSPEC = false;
 bool dataTIBBERPULSE = false;
+bool batteriesMarstek = false;
 
 Preferences preferences;
 
@@ -248,6 +252,8 @@ void WifiManagerSetup() {
   strcpy(tibber_user, preferences.getString("tibber_user", tibber_user).c_str());
   strcpy(tibber_password, preferences.getString("tibber_password", tibber_password).c_str());
 
+  strcpy(marstek_hostnames, preferences.getString("marstek_hostnames", marstek_hostnames).c_str());
+
   const char *show_pwd_str = "<input type=\"checkbox\" onclick=\"t('%s')\">&nbsp;<label>Show password</label><br/>";
 
   // ESP8266 has only a 4 KB cont stack — keep these large objects in BSS
@@ -298,6 +304,9 @@ void WifiManagerSetup() {
   static WiFiManagerParameter param_tibber_user("tibber_user", "User <span title=\"defaults to: admin\" style=\"cursor: help;\" aria-label=\"Help\" tabindex=\"0\">(?)</span>", tibber_user, 10);
   static WiFiManagerParameter param_tibber_password("tibber_password", "Password <span title=\"as printed on bridge device: xxxx-xxxx\" style=\"cursor: help;\" aria-label=\"Help\" tabindex=\"0\">(?)</span>", tibber_password, 10, "type='password'");
   static WiFiManagerParameter param_tibber_password_show_password(buf_tibber_pwd_show_pwd);
+
+  static WiFiManagerParameter custom_section5("<hr><h3>Marstek Venus E battery settings</h3>");
+  static WiFiManagerParameter custom_marstek_hostnames("marstek_hostnames", "Battery hostnames <span title=\"List of hostnames or IP addresses of the Marstek Venus E batteries separated by semicolons, e.g. 'marstek-1.local;marstek-2.local' or '192.168.178.30;192.168.178.31'\" style=\"cursor: help;\" aria-label=\"Help\" tabindex=\"0\">(?)</span>", marstek_hostnames, 256);
 
   static WiFiManager wifiManager;
   if (!DEBUG) {
@@ -352,6 +361,10 @@ void WifiManagerSetup() {
   wifiManager.addParameter(&param_tibber_password);
   wifiManager.addParameter(&param_tibber_password_show_password);
 
+  wifiManager.addParameter(&custom_section5);
+  wifiManager.addParameter(&custom_marstek_hostnames);
+
+
   // fallback if remote AP boots slower than ESP,reboot after 600s without user interaction
   wifiManager.setConfigPortalTimeout(600); 
 
@@ -395,6 +408,8 @@ void WifiManagerSetup() {
   strcpy(tibber_nodeid, param_tibber_node_id.getValue());
   strcpy(tibber_user, param_tibber_user.getValue());
   strcpy(tibber_password, param_tibber_password.getValue());
+  strcpy(marstek_hostnames, custom_marstek_hostnames.getValue());
+
 
   offsetPerPhase = String(power_offset).toDouble() / 3.0;  // distribute offset equally across phases
 
@@ -457,6 +472,13 @@ void WifiManagerSetup() {
   DEBUG_SERIAL.print(F("\t - tibber_user: "));
   DEBUG_SERIAL.println(String(tibber_user));
   DEBUG_SERIAL.print(F("\t - tibber_password: ********"));
+  DEBUG_SERIAL.print(F("\tMarstek Venus E battery hostnames: "));
+  DEBUG_SERIAL.println(String(marstek_hostnames));
+
+  if (strlen(marstek_hostnames) > 0) {
+    batteriesMarstek = true;
+    DEBUG_SERIAL.println(F("Enabling Marstek Venus E battery support"));
+  } 
 
   if (strcmp(input_type, "SMA") == 0) {
     dataSMA = true;
@@ -524,6 +546,7 @@ void WifiManagerSetup() {
     preferences.putString("tibber_nodeid", tibber_nodeid);
     preferences.putString("tibber_user", tibber_user);
     preferences.putString("tibber_password", tibber_password);
+    preferences.putString("marstek_hostnames", marstek_hostnames);
     wifiManager.reboot();
   }
   DEBUG_SERIAL.println(F("local ip"));
