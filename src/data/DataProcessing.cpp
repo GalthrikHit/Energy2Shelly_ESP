@@ -6,6 +6,11 @@
 PowerData PhasePower[3];
 EnergyData PhaseEnergy[3];
 String serJsonResponse;
+static double _totalEnergyConsumption = 0;
+static double _totalEnergyProduction = 0;
+
+double getEnergyConsumption() { return _totalEnergyConsumption; }
+double getEnergyProduction() { return _totalEnergyProduction; }
 
 double round2(double value) {
   return round(value * 100.0) / 100.0;
@@ -90,11 +95,13 @@ void setPowerData(double phase1Power, double phase2Power, double phase3Power) {
 }
 
 void setEnergyData(double totalEnergyGridSupply, double totalEnergyGridFeedIn) {
+  _totalEnergyConsumption = round2(totalEnergyGridSupply);
+  _totalEnergyProduction = round2(totalEnergyGridFeedIn);
   switch (phase_number[0]) {
   case '1': // monophase
     for (int i = 0; i <= 2; i++) {
-      PhaseEnergy[i].consumption = (i == 0) ? round2(totalEnergyGridSupply) : 0.0;
-      PhaseEnergy[i].gridfeedin = (i == 0) ? round2(totalEnergyGridFeedIn) : 0.0;
+      PhaseEnergy[i].consumption = (i == 0) ? _totalEnergyConsumption : 0.0;
+      PhaseEnergy[i].gridfeedin = (i == 0) ? _totalEnergyProduction : 0.0;
     }
     break;
   case '3': // triphase
@@ -106,9 +113,9 @@ void setEnergyData(double totalEnergyGridSupply, double totalEnergyGridFeedIn) {
     break;
   }
   DEBUG_SERIAL.print(F("Total Consumption (Grid Supply): "));
-  DEBUG_SERIAL.print(totalEnergyGridSupply);
+  DEBUG_SERIAL.print(_totalEnergyConsumption);
   DEBUG_SERIAL.print(F(" - Total Production (Grid Feed-In): "));
-  DEBUG_SERIAL.println(totalEnergyGridFeedIn);
+  DEBUG_SERIAL.println(_totalEnergyProduction);
 }
 
 void setJsonPathPower(JsonDocument json) {

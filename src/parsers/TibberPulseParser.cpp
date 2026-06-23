@@ -4,6 +4,7 @@
 
 // functions for TibberPulse
 double tibber_consumption = 0, tibber_production = 0, tibber_power = 0;
+double tibber_power_l1 = 0, tibber_power_l2 = 0, tibber_power_l3 = 0;
 
 typedef struct {
   const unsigned char OBIS[6];
@@ -14,15 +15,23 @@ typedef struct {
 // - consumption (OBIS 1-0:1.8.0)
 // - production  (OBIS 1-0:2.8.0)
 // - power       (OBIS 1-0:16.7.0)
-// this could be extended later if needed for other OBIS codes (at least those used in TibberPulse SML)
+// - power L1    (OBIS 1-0:36.7.0)
+// - power L2    (OBIS 1-0:56.7.0)
+// - power L3    (OBIS 1-0:76.7.0)
 void Consumption() { smlOBISWh(tibber_consumption); }
 void Production() { smlOBISWh(tibber_production); }
 void Power() { smlOBISW(tibber_power); }
+void PowerL1() { smlOBISW(tibber_power_l1); }
+void PowerL2() { smlOBISW(tibber_power_l2); }
+void PowerL3() { smlOBISW(tibber_power_l3); }
 
 OBISHandler OBISHandlers[] = {
   {{0x01, 0x00, 0x01, 0x08, 0x00, 0xff}, &Consumption}, /* 1-0: 1. 8.0*255 (Consumption Total) */
   {{0x01, 0x00, 0x02, 0x08, 0x00, 0xff}, &Production},  /* 1-0: 2. 8.0*255 (Production Total) */
   {{0x01, 0x00, 0x10, 0x07, 0x00, 0xff}, &Power},       /* 1-0:16. 7.0*255 (power) */
+  {{0x01, 0x00, 0x24, 0x07, 0x00, 0xff}, &PowerL1},     /* 1-0:36. 7.0*255 (power L1) */
+  {{0x01, 0x00, 0x38, 0x07, 0x00, 0xff}, &PowerL2},     /* 1-0:56. 7.0*255 (power L2) */
+  {{0x01, 0x00, 0x4c, 0x07, 0x00, 0xff}, &PowerL3},     /* 1-0:76. 7.0*255 (power L3) */
   {{0, 0}}
 };
 
@@ -36,6 +45,8 @@ enum {
   SML_PM_MT631 = 236,
   // EasyMeter ESY11
   SML_PM_ESY11 = 476,
+  // EMH EHZ (448 bytes, manufacturer EMH)
+  SML_PM_EMH_EHZ = 448,
   SMLPAYLOADMAXSIZE = 500
 };
 byte smlpayload[SMLPAYLOADMAXSIZE]{0};
@@ -63,7 +74,7 @@ bool parseTibberPulse() {
     w->readBytes(smlpayload, getlength);
     // the OBIS codes for consumption (1-0:1.8.0*255) and power (1-0:16.7.0*255) are the same,
     // the SML message length might be different, but reading these should still work
-    if (getlength != SML_PM_EMH_EHZB && getlength != SML_PM_EBZ_DD3 && getlength != SML_PM_MT631 && getlength != SML_PM_ESY11) {
+    if (getlength != SML_PM_EMH_EHZB && getlength != SML_PM_EBZ_DD3 && getlength != SML_PM_MT631 && getlength != SML_PM_ESY11 && getlength != SML_PM_EMH_EHZ) {
       DEBUG_SERIAL.printf("ERROR: SML data not in expected length! length=%d \r\n", getlength);
       // for extra debugging
       for (int i = 0; i < getlength; i++) {
@@ -84,6 +95,9 @@ bool parseTibberPulse() {
           tibber_consumption = 0;
           tibber_production = 0;
           tibber_power = 0;
+          tibber_power_l1 = 0;
+          tibber_power_l2 = 0;
+          tibber_power_l3 = 0;
           break;
         case SML_LISTEND:
           for (
@@ -99,8 +113,12 @@ bool parseTibberPulse() {
           DEBUG_SERIAL.printf(">>> Unexpected byte >%02X<! <<<\n", smlpayload[i]);
           break;
         case SML_FINAL:
-          setEnergyData(tibber_consumption, tibber_production); // input and output energy from TibberPulse
-          setPowerData(tibber_power);
+          setEnergyData(tibber_consumption, tibber_production);
+          if (tibber_power_l1 != 0 || tibber_power_l2 != 0 || tibber_power_l3 != 0) {
+            setPowerData(tibber_power_l1, tibber_power_l2, tibber_power_l3);
+          } else {
+            setPowerData(tibber_power);
+          }
           ret = true;
           break;
         default:
