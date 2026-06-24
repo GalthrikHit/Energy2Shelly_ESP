@@ -62,6 +62,7 @@ bool parseTibberPulse() {
   DEBUG_SERIAL.printf("URL:%s, user:%s\r\n", url.c_str(), tibber_user);
   http.begin(wifi_client, url);
   http.setAuthorization(tibber_user, tibber_password);
+  http.setTimeout(5000);
   int httpResponseCode = http.GET();
   if (httpResponseCode > 0) {
     getlength = http.getSize();

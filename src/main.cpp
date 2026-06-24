@@ -256,6 +256,12 @@ void loop() {
     delay(1000);
     ESP.restart();
   }
+  if (WiFi.status() != WL_CONNECTED) {
+    DEBUG_SERIAL.println(F("WiFi disconnected, reconnecting..."));
+    WiFi.reconnect();
+    delay(1000);
+    return;
+  }
   if (dataMQTT) {
     if (!mqtt_client.connected()) {
       mqtt_reconnect();
@@ -287,4 +293,5 @@ void loop() {
     }
   }
   handleblinkled();
+  yield();
 }
