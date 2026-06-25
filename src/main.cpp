@@ -1,5 +1,9 @@
 #include <Arduino.h>
 
+#ifdef ESP32
+#include "esp_task_wdt.h"
+#endif
+
 // Configuration & setup
 #include "config/Configuration.h"
 
@@ -20,6 +24,12 @@
 void setup(void) {
   DEBUG_SERIAL.begin(115200);
   WifiManagerSetup();
+
+  // Initialize watchdog timer (30s timeout)
+#ifdef ESP32
+  esp_task_wdt_init(30, true);
+  esp_task_wdt_add(NULL);
+#endif
 
   // Initialize time via NTP
 #ifdef ESP32
@@ -259,6 +269,9 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     DEBUG_SERIAL.println(F("WiFi disconnected, reconnecting..."));
     WiFi.reconnect();
+#ifdef ESP32
+    esp_task_wdt_reset();
+#endif
     delay(1000);
     return;
   }
@@ -293,4 +306,7 @@ void loop() {
     }
   }
   handleblinkled();
+#ifdef ESP32
+  esp_task_wdt_reset();
+#endif
 }
