@@ -16,10 +16,6 @@ void setPowerData(double phase1Power, double phase2Power, double phase3Power);
 // Energy setter - distribute to all three phases
 void setEnergyData(double totalEnergyGridSupply, double totalEnergyGridFeedIn);
 
-// Energy getters - returns the original meter totals (not distributed per-phase)
-double getEnergyConsumption();
-double getEnergyProduction();
-
 // JSON path processing
 void setJsonPathPower(JsonDocument json);
 void parseShellyString(const char *jsonStr);

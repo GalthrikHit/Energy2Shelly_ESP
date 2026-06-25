@@ -149,8 +149,8 @@ void EMDataGetStatus() {
   jsonResponse["b_total_act_ret_energy"] = serialized(String(PhaseEnergy[1].gridfeedin, 2));
   jsonResponse["c_total_act_energy"] = serialized(String(PhaseEnergy[2].consumption, 2));
   jsonResponse["c_total_act_ret_energy"] = serialized(String(PhaseEnergy[2].gridfeedin, 2));
-  jsonResponse["total_act"] = serialized(String(getEnergyConsumption(), 2));
-  jsonResponse["total_act_ret"] = serialized(String(getEnergyProduction(), 2));
+  jsonResponse["total_act"] = serialized(String(PhaseEnergy[0].consumption + PhaseEnergy[1].consumption + PhaseEnergy[2].consumption, 2));
+  jsonResponse["total_act_ret"] = serialized(String(PhaseEnergy[0].gridfeedin + PhaseEnergy[1].gridfeedin + PhaseEnergy[2].gridfeedin, 2));
   serializeJson(jsonResponse, serJsonResponse);
   DEBUG_SERIAL.print(F("EMDataGetStatus: "));
   DEBUG_SERIAL.println(serJsonResponse);

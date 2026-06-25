@@ -293,5 +293,4 @@ void loop() {
     }
   }
   handleblinkled();
-  yield();
 }
