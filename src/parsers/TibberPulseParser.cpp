@@ -45,8 +45,10 @@ enum {
   SML_PM_MT631 = 236,
   // EasyMeter ESY11
   SML_PM_ESY11 = 476,
-  // EMH EHZ (448 bytes, manufacturer EMH)
+  // EMH EHZ
   SML_PM_EMH_EHZ = 448,
+  // Landis + Gyr E320
+  SML_PM_LG_LE320 = 276,
   SMLPAYLOADMAXSIZE = 500
 };
 byte smlpayload[SMLPAYLOADMAXSIZE]{0};
@@ -75,7 +77,7 @@ bool parseTibberPulse() {
     w->readBytes(smlpayload, getlength);
     // the OBIS codes for consumption (1-0:1.8.0*255) and power (1-0:16.7.0*255) are the same,
     // the SML message length might be different, but reading these should still work
-    if (getlength != SML_PM_EMH_EHZB && getlength != SML_PM_EBZ_DD3 && getlength != SML_PM_MT631 && getlength != SML_PM_ESY11 && getlength != SML_PM_EMH_EHZ) {
+    if (getlength != SML_PM_EMH_EHZB && getlength != SML_PM_EBZ_DD3 && getlength != SML_PM_MT631 && getlength != SML_PM_ESY11 && getlength != SML_PM_EMH_EHZ && getlength != SML_PM_LG_LE320) {
       DEBUG_SERIAL.printf("ERROR: SML data not in expected length! length=%d \r\n", getlength);
       // for extra debugging
       for (int i = 0; i < getlength; i++) {
