@@ -21,6 +21,8 @@
 // Web content
 #include "web/html_home.h"
 
+
+
 void setup(void) {
   DEBUG_SERIAL.begin(115200);
   WifiManagerSetup();
@@ -80,6 +82,11 @@ void setup(void) {
   server.on("/", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", FPSTR(HTML_HOME));
   });
+
+  server.on("/console", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", FPSTR(htmlPage_console));
+  });
+
 
   server.on("/shelly", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request) {
     shellyGetDeviceInfo();
@@ -193,7 +200,9 @@ void setup(void) {
   );
 
   webSocket.onEvent(webSocketEvent);
+  wsConsole.onEvent(onWsEvent);
   server.addHandler(&webSocket);
+  server.addHandler(&wsConsole);
   server.begin();
 
   // Set up RPC over UDP for Marstek users

@@ -35,7 +35,53 @@
 // ============================================================================
 
 #define DEBUG true // set to false for no DEBUG output
-#define DEBUG_SERIAL if(DEBUG)Serial
+
+
+
+extern bool enableConsoleOutput; // Global flag to control console output visibility
+extern AsyncWebSocket wsConsole;
+// Custom Logger class inheriting from Print to natively support all data types
+class WebDebugLogger : public Print {
+public:
+    void begin(unsigned long baud) {
+        Serial.begin(baud);
+    }
+    virtual size_t write(uint8_t character) override {
+        #if DEBUG
+            // Respect the global runtime visibility flag
+            if (!enableConsoleOutput) return 1;
+
+            // 1. Output to local USB Hardware Serial
+            Serial.write(character);
+            
+            // 2. Buffer data to prevent Wi-Fi packet flooding
+            static String buffer = "";
+            buffer += (char)character;
+            
+            // Transmit data on newline or when buffer threshold is reached
+            if (character == '\n' || buffer.length() > 64) {  
+                wsConsole.textAll(buffer);
+                buffer = "";
+            }
+        #endif
+        return 1;
+    }
+};
+
+#if DEBUG
+    #define DEBUG_SERIAL DebugConsole
+    extern WebDebugLogger DebugConsole;
+#else
+    // If DEBUG is false, dummy class removes all strings from memory entirely
+    class NullDebug : public Print { 
+      public: virtual size_t write(uint8_t c) override { return 1; }
+      void begin(unsigned long baud)  {}
+    };
+    extern NullDebug EmptyConsole;
+    #define DEBUG_SERIAL EmptyConsole
+#endif
+
+//#define DEBUG_SERIAL if(DEBUG)Serial
 
 extern unsigned long startMillis;
 extern unsigned long currentMillis;
@@ -138,9 +184,12 @@ extern WiFiClient wifi_client;
 extern PubSubClient mqtt_client;
 extern AsyncWebServer server;
 extern AsyncWebSocket webSocket;
+
+
 extern WiFiUDP Udp;
 extern HTTPClient http;
 extern WiFiUDP UdpRPC;
+extern void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 
 // Platform-specific UDP print macro
 #ifdef ESP32
