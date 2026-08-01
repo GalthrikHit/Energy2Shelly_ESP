@@ -131,7 +131,7 @@ First, sorry. This software is not perfect.
   ### status page <code>http://IP-address/status</code>
   ![status](./screenshots/screenshot_05.png)
 
-  ### status page <code>http://IP-address/console</code>
+  ### console page <code>http://IP-address/console</code>
   ![console](./screenshots/screenshot_06.png)
 
 
