@@ -163,4 +163,45 @@ setInterval(refreshData, 5000);
 </html>
 )=====";
 
+
+
+// Single-file HTML & JavaScript source for the browser console
+const char* htmlPage_console = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Arduino HTTP Console</title>
+    <style>
+        body { background-color: #1e1e1e; color: #00ff00; font-family: monospace; padding: 20px; margin: 0; }
+        h2 { color: #ffffff; font-family: sans-serif; margin-bottom: 10px; }
+        #console { width: calc(100% - 20px); height: 500px; border: 1px solid #444; overflow-y: scroll; padding: 10px; background: #000; box-shadow: inset 0 0 10px #000; }
+        .status { color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h2>Arduino Live Web Console</h2>
+    <div id="console"><span class="status">[Connecting to console stream...]</span><br></div>
+
+    <script>
+        var wsPort = 8080; // Default port, will be replaced by the server
+        var ws = new WebSocket('ws://' + window.location.hostname +  '/consolews');
+        var consoleDiv = document.getElementById('console');
+
+        ws.onopen = function() {
+            consoleDiv.innerHTML += '<span style="color:#00ff00;">[Connected to WebSocket on Port ' + wsPort + ']</span><br>';
+        };
+
+        ws.onmessage = function(event) {
+            consoleDiv.innerHTML += event.data + '<br>';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight; // Keep scrolling down
+        };
+
+        ws.onclose = function() {
+            consoleDiv.innerHTML += '<span style="color:#ff0000; font-weight:bold;">[Disconnected from Server]</span><br>';
+        };
+    </script>
+</body>
+</html>
+)rawliteral";
+
 #endif // HTML_HOME_H

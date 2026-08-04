@@ -99,6 +99,8 @@ Directly download a matching OTA-binary for your ESP device from the releases pa
 #### 5. Check the current power data at <code>http://IP-address/status</code><br>
 - [ ] \(Optional) If you want to reset you Wifi-Configuration and/or reconfigure other settings go to <code>http://IP-address/reset</code> and reconnect to the Energy2Shelly hotspot.
 
+#### 6. Check debug output at <code>http://IP-address/console</code><br>
+
 # Currently supported microcontrollers
 * ESP32-C3
 * ESP32-S3
@@ -128,6 +130,10 @@ First, sorry. This software is not perfect.
 
   ### status page <code>http://IP-address/status</code>
   ![status](./screenshots/screenshot_05.png)
+
+  ### console page <code>http://IP-address/console</code>
+  ![console](./screenshots/screenshot_06.png)
+
 
   > [!NOTE]
   > Images may vary depending on the version. We always try to be up to date.

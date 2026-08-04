@@ -101,6 +101,7 @@ WiFiClient wifi_client;
 PubSubClient mqtt_client(wifi_client);
 AsyncWebServer server(80);
 AsyncWebSocket webSocket("/rpc");
+AsyncWebSocket wsConsole("/consolews"); 
 WiFiUDP Udp;
 HTTPClient http;
 WiFiUDP UdpRPC;
@@ -144,6 +145,21 @@ void saveConfigCallback() {
   DEBUG_SERIAL.println(F("Should save config"));
   shouldSaveConfig = true;
 }
+
+#if DEBUG
+WebDebugLogger DebugConsole;
+bool enableConsoleOutput=true;
+#else
+NullDebug EmptyConsole;
+bool enableConsoleOutput=false;
+#endif
+
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    if (type == WS_EVT_CONNECT) {
+        client->text("--- Connected to WebSocket ---");
+    }
+}
+
 
 void WifiManagerSetup() {
   WiFi.setAutoReconnect(true);
