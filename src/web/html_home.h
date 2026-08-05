@@ -154,10 +154,14 @@ function refreshData() {
 }
 
 // Initial load
-refreshData();
-
-// Auto-refresh every 5 seconds
-setInterval(refreshData, 5000);
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    refreshData();
+    
+    
+    setInterval(refreshData, 5000);
+  }, 400); // 400ms delay to allow the page to render before fetching data
+});
 </script>
 </body>
 </html>
