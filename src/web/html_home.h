@@ -166,7 +166,7 @@ setInterval(refreshData, 5000);
 
 
 // Single-file HTML & JavaScript source for the browser console
-const char* htmlPage_console = R"rawliteral(
+const char* htmlPage_console PROGMEM  = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
