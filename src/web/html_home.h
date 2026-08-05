@@ -192,7 +192,7 @@ const char* htmlPage_console PROGMEM  = R"rawliteral(
         };
 
         ws.onmessage = function(event) {
-            consoleDiv.innerHTML += event.data + '<br>';
+            consoleDiv.innerHTML +=  event.data.replace(/\n/g, '<br>');
             consoleDiv.scrollTop = consoleDiv.scrollHeight; // Keep scrolling down
         };
 
