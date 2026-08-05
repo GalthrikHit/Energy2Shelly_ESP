@@ -315,7 +315,7 @@ void loop() {
     }
   }
   handleblinkled();
-  DebugConsole.handleQueue();
+  DEBUG_SERIAL.handleQueue();
   webSocket.cleanupClients();
 #ifdef ESP32
   esp_task_wdt_reset();
