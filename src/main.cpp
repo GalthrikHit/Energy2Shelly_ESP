@@ -80,11 +80,23 @@ void setup(void) {
   // Set up web server and endpoints
 
   server.on("/", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", FPSTR(HTML_HOME));
+    AsyncWebServerResponse *response = request->beginResponse("text/html", strlen_P(HTML_HOME), [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+        // copy fragment bytes from PROGMEM to buffer, use less resources by copying only the requested fragment
+        memcpy_P(buffer, HTML_HOME + index, maxLen); return maxLen;
+    });
+    request->send(response);
+  });
+
+  server.on("/favicon.ico", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(204); // 204 "No Content" 
   });
 
   server.on("/console", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", FPSTR(htmlPage_console));
+      AsyncWebServerResponse *response = request->beginResponse("text/html", strlen_P(htmlPage_console), [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+        // copy fragment bytes from PROGMEM to buffer, use less resources by copying only the requested fragment
+        memcpy_P(buffer, htmlPage_console + index, maxLen); return maxLen;
+    });
+    request->send(response);
   });
 
 
