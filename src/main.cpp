@@ -268,6 +268,35 @@ void setup(void) {
   startMillis = millis();
 }
 
+// to be tuned for ESP32 and ESP8266 
+#if defined(ESP32)
+#define MIN_HEAP_SIZE 12000
+#elif defined(ESP8266)
+#define MIN_HEAP_SIZE 5000
+#endif
+
+void stackWD(void) {
+  uint32_t freeHeap = ESP.getFreeHeap();
+#if defined(ESP32)
+  uint32_t maxBlock = ESP.getMaxAllocHeap();
+#elif defined(ESP8266)
+  uint32_t maxBlock = ESP.getMaxFreeBlockSize();
+#endif
+  DEBUG_SERIAL.printf("Free heap: %u bytes, Max free block: %u bytes\n", freeHeap, maxBlock);
+  if (maxBlock < MIN_HEAP_SIZE) {
+    DEBUG_SERIAL.println(F("Low memory detected, restarting..."));
+    #if defined(ESP32)
+    WiFi.disconnect(false, false); 
+  #elif defined(ESP8266)
+    WiFi.disconnect(false);       
+  #endif
+    delay(1000);
+    ESP.restart();
+  }
+  
+}
+
+
 void loop() {
   currentMillis = millis();
 #ifndef ESP32
@@ -325,6 +354,11 @@ void loop() {
       parseTibberPulse();
       startMillis = currentMillis;
     }
+  }
+  static unsigned long stackWDTimer = 0;
+  if (currentMillis - stackWDTimer >= 30000) {
+    stackWD();
+    stackWDTimer = currentMillis;
   }
   handleblinkled();
   DEBUG_SERIAL.handleQueue();
