@@ -29,6 +29,7 @@
 void setup(void)
 {
   DEBUG_SERIAL.begin(115200);
+  clear_rtc_power_on();
   WifiManagerSetup();
 
   // Initialize watchdog timer (30s timeout)
@@ -370,6 +371,7 @@ void loop()
     if (currentMillis - reconnectStart > 10000) // Attempt to reconnect every 10 seconds, to fast reconnection can cause issues with some routers and APs
     {
       reconnectStart = currentMillis;
+      wifi_reconnect_attempts++;
       WiFi.reconnect(); // forces a disconnect and reconnect, hence the 10s delay to avoid rapid reconnection attempts
       DEBUG_SERIAL.println(F("WiFi disconnected, attempting to reconnect..."));
     }
@@ -382,7 +384,7 @@ void loop()
   if (currentMillis - WDTimer >= 30000)
   {
     stackWD();
-    wifi_status_print();
+    status_print();
     WDTimer = currentMillis;
   }
 
@@ -391,7 +393,7 @@ void loop()
   if (millis() - WiFilastConnectionCheck > WiFicheckInterval)
   {
     DEBUG_SERIAL.println(F("Lost WiFi connection or SSID changed!"));
-    all_esp_reset();
+    all_esp_reset(Energ2Shelly_ResetReason::WIFI_DISCONNECT);
   }
 
   handleblinkled();

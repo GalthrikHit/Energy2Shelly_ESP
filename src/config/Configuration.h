@@ -287,7 +287,7 @@ extern WiFiClient wifi_client;
 extern PubSubClient mqtt_client;
 extern AsyncWebServer server;
 extern AsyncWebSocket webSocket;
-
+extern uint16_t wifi_reconnect_attempts;
 
 extern WiFiUDP Udp;
 extern HTTPClient http;

@@ -3,10 +3,20 @@
 
 #include <Arduino.h>
 
-void all_esp_reset(void);
+enum class Energ2Shelly_ResetReason
+{
+  POWER_ON = 0,
+  LOW_MEMORY = 1,
+  MANUAL_RESET = 2,
+  WIFI_DISCONNECT = 3,
+  OTHER = 4
+};
+
+void all_esp_reset(Energ2Shelly_ResetReason reason);
 void stackWD(void);
 uint64_t extendedMillis();
-void wifi_status_print(void);
+void status_print(void);
+void clear_rtc_power_on(void);
 
 // to be tuned for ESP32 and ESP8266
 #if defined(ESP32)

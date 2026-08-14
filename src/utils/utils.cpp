@@ -1,11 +1,55 @@
 #include "utils.h"
 #include "config/Configuration.h"
 
-void all_esp_reset(void)
+// Survives deep sleep and software resets
+#if defined(ESP32)
+RTC_DATA_ATTR Energ2Shelly_ResetReason rtc_reset_reason;
+#elif defined(ESP8266)
+Energ2Shelly_ResetReason rtc_reset_reason;
+#endif
+
+
+
+// return true if the reset reason is a power-on reset, false otherwise
+bool isPowerOnReset() {
+#if defined(ESP32)
+  esp_reset_reason_t reason = esp_reset_reason();
+  return (reason == ESP_RST_POWERON || reason == ESP_RST_EXT);
+
+#elif defined(ESP8266)
+  rst_info *resetInfo = ESP.getResetInfoPtr();
+  return (resetInfo->reason == REASON_DEFAULT_RST || resetInfo->reason == REASON_EXT_SYS_RST);
+
+#else
+  return false; // Falls ein anderes Board genutzt wird
+#endif
+}
+
+
+void clear_rtc_power_on(void)
 {
+  if (isPowerOnReset())
+  {
+    rtc_reset_reason = Energ2Shelly_ResetReason::POWER_ON;
+#if defined(ESP8266)
+    ESP.rtcUserMemoryWrite(0,  (uint32_t*)&rtc_reset_reason, sizeof(rtc_reset_reason));
+#endif
+  }
+  else
+  {
+#if defined(ESP8266)
+    ESP.rtcUserMemoryRead(0,  (uint32_t*)&rtc_reset_reason, sizeof(rtc_reset_reason));
+#endif
+  }
+}
+
+void all_esp_reset(Energ2Shelly_ResetReason reason)
+{
+  rtc_reset_reason = reason;
 #if defined(ESP32)
   WiFi.disconnect(false, false);
 #elif defined(ESP8266)
+  ESP.rtcUserMemoryWrite(0,  (uint32_t*)&rtc_reset_reason, sizeof(rtc_reset_reason));
   WiFi.disconnect(false);
 #endif
   delay(1000);
@@ -29,7 +73,7 @@ void stackWD(void)
   if (maxBlock < MIN_HEAP_SIZE)
   {
     DEBUG_SERIAL.println(F("Low memory detected, restarting..."));
-    all_esp_reset();
+    all_esp_reset(Energ2Shelly_ResetReason::LOW_MEMORY);
   }
 }
 
@@ -51,7 +95,7 @@ uint64_t extendedMillis()
   return (overflows << 32) + currentMillis;
 }
 
-void wifi_status_print(void)
+void status_print(void)
 {
   DEBUG_SERIAL.print(F("Wifi, RSSI: "));
   DEBUG_SERIAL.print(WiFi.RSSI());
@@ -77,4 +121,31 @@ void wifi_status_print(void)
   DEBUG_SERIAL.print(F(" days, "));
   DEBUG_SERIAL.printf("%02d:%02d", houres, minutes);
   DEBUG_SERIAL.println(F(" h"));
+
+  DEBUG_SERIAL.print(F("Reset reason: "));
+  switch (rtc_reset_reason)
+  {
+  case Energ2Shelly_ResetReason::POWER_ON:
+    DEBUG_SERIAL.print(F("Power-on reset"));
+    break;
+  case Energ2Shelly_ResetReason::LOW_MEMORY:
+    DEBUG_SERIAL.print(F("Low memory reset"));
+    break;
+  case Energ2Shelly_ResetReason::WIFI_DISCONNECT:
+    DEBUG_SERIAL.print(F("WiFi disconnect reset"));
+    break;
+  case Energ2Shelly_ResetReason::MANUAL_RESET:
+    DEBUG_SERIAL.print(F("Manual reset"));
+    break;
+  case Energ2Shelly_ResetReason::OTHER:
+    DEBUG_SERIAL.print(F("Other reset"));
+    break;
+  default:
+    DEBUG_SERIAL.print(F("Unknown reset reason"));
+    break; 
+  }
+  DEBUG_SERIAL.print(F(", reconnect attempts: "));
+  DEBUG_SERIAL.println(wifi_reconnect_attempts);
+
+
 }

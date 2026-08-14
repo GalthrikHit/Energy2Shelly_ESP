@@ -105,6 +105,7 @@ AsyncWebSocket wsConsole("/consolews");
 WiFiUDP Udp;
 HTTPClient http;
 WiFiUDP UdpRPC;
+uint16_t wifi_reconnect_attempts = 0;
 
 // ============================================================================
 // MDNS RESPONDER HANDLES (ESP8266 only)
