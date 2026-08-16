@@ -268,12 +268,11 @@ void setup(void)
   {
     period = atol(query_period);
     modbus1.client();
-    modbus_ip.fromString(mqtt_server);
-    if (!modbus1.isConnected(modbus_ip))
-    { // reuse mqtt server adresss for modbus adress
-      Serial.println(F("Trying to connect SUNSPEC powermeter data"));
-      modbus1.connect(modbus_ip, String(mqtt_port).toInt());
-    }
+    modbus_ip.fromString(mqtt_server); // Todo, replace by DNS resolver for hostnames, currently only IP addresses are supported
+    sunspec_port_int = atol(mqtt_port);
+    modbusdev_int = atol(modbus_dev);
+    DEBUG_SERIAL.println(F("Trying to connect SUNSPEC powermeter data"));
+    modbus1.connect(modbus_ip, sunspec_port_int);   
   }
 
   // Set Up HTTP query

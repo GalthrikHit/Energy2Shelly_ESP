@@ -229,6 +229,9 @@ extern char shelly_port[6];
 extern char query_period[10];
 extern char modbus_dev[10];
 extern char sma_id[17];
+extern uint16_t sunspec_port_int; // default port
+extern uint8_t modbusdev_int; // default device id for KSEM
+
 
 extern char tibber_host[41];
 extern char tibber_user[11];
