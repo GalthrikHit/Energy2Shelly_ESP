@@ -21,9 +21,10 @@ bool isPowerOnReset() {
   return (resetInfo->reason == REASON_DEFAULT_RST || resetInfo->reason == REASON_EXT_SYS_RST);
 
 #else
-  return false; // Falls ein anderes Board genutzt wird
+  return false; // Unsupported platform
 #endif
 }
+
 
 
 void clear_rtc_power_on(void)
@@ -84,7 +85,7 @@ uint64_t extendedMillis()
 
   unsigned long currentMillis = millis();
 
-  // Überlauf erkennen
+  // detect overflow of millis() and increment the overflow counter
   if (currentMillis < lastMillis)
   {
     overflows++;
