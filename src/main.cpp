@@ -327,6 +327,7 @@ void worker_loop(int currentMillis)
   }
   if (dataSUNSPEC)
   {
+    modbus1.task(); // allow modbus TCP client to process incoming data and maintain connection, call callbacks
     if (currentMillis - startMillis >= period)
     {
       parseSUNSPEC();
