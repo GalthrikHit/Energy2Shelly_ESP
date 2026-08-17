@@ -77,6 +77,7 @@ void all_esp_reset(Energ2Shelly_ResetReason reason)
 #endif
   delay(1000);
   ESP.restart();
+  delay(1000);
 }
 
 void stackWD(void)
