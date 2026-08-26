@@ -37,12 +37,12 @@ uint16_t SUNSPEC_POWER_FACTOR1 = 40105;
 uint16_t SUNSPEC_POWER_FACTOR2 = 40106;
 
 uint16_t SUNSPEC_REAL_ENERGY_EXPORTED0 = 40110;
-uint16_t SUNSPEC_REAL_ENERGY_EXPORTED1 = 40111;
-uint16_t SUNSPEC_REAL_ENERGY_EXPORTED2 = 40112;
+uint16_t SUNSPEC_REAL_ENERGY_EXPORTED1 = 40112;
+uint16_t SUNSPEC_REAL_ENERGY_EXPORTED2 = 40114;
 
-uint16_t SUNSPEC_REAL_IMPORTED_EXPORTED0 = 40118;
-uint16_t SUNSPEC_REAL_IMPORTED_EXPORTED1 = 40119;
-uint16_t SUNSPEC_REAL_IMPORTED_EXPORTED2 = 40120;
+uint16_t SUNSPEC_REAL_ENERGY_IMPORTED0 = 40118;
+uint16_t SUNSPEC_REAL_ENERGY_IMPORTED1 = 40120;
+uint16_t SUNSPEC_REAL_ENERGY_IMPORTED2 = 40122;
 
 uint16_t SUNSPEC_REGISTER_COUNT = 64;
 
@@ -73,7 +73,7 @@ bool modbusSunSpecCallback(Modbus::ResultCode event, uint16_t transactionId, voi
 
     {
       uint32_t p = 0;
-      uint8_t *p_u8 = (uint8_t *)&modbus_result[SUNSPEC_REAL_IMPORTED_EXPORTED0 - SUNSPEC_BASE];
+      uint8_t *p_u8 = (uint8_t *)&modbus_result[SUNSPEC_REAL_ENERGY_IMPORTED0 - SUNSPEC_BASE];
       p |= ((uint32_t)p_u8[2]) << 0;
       p |= ((uint32_t)p_u8[3]) << 8;
       p |= ((uint32_t)p_u8[0]) << 16;
@@ -98,7 +98,7 @@ bool modbusSunSpecCallback(Modbus::ResultCode event, uint16_t transactionId, voi
     power += PhasePower[1].power;
     {
       uint32_t p = 0;
-      uint8_t *p_u8 = (uint8_t *)&modbus_result[SUNSPEC_REAL_IMPORTED_EXPORTED1 - SUNSPEC_BASE];
+      uint8_t *p_u8 = (uint8_t *)&modbus_result[SUNSPEC_REAL_ENERGY_IMPORTED1 - SUNSPEC_BASE];
       p |= ((uint32_t)p_u8[2]) << 0;
       p |= ((uint32_t)p_u8[3]) << 8;
       p |= ((uint32_t)p_u8[0]) << 16;
@@ -123,7 +123,7 @@ bool modbusSunSpecCallback(Modbus::ResultCode event, uint16_t transactionId, voi
     power += PhasePower[2].power;
     {
       uint32_t p = 0;
-      uint8_t *p_u8 = (uint8_t *)&modbus_result[SUNSPEC_REAL_IMPORTED_EXPORTED2 - SUNSPEC_BASE];
+      uint8_t *p_u8 = (uint8_t *)&modbus_result[SUNSPEC_REAL_ENERGY_IMPORTED2 - SUNSPEC_BASE];
       p |= ((uint32_t)p_u8[2]) << 0;
       p |= ((uint32_t)p_u8[3]) << 8;
       p |= ((uint32_t)p_u8[0]) << 16;
