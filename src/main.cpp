@@ -6,6 +6,7 @@
 
 // Configuration & setup
 #include "config/Configuration.h"
+#include <ElegantOTA.h>
 
 // Data structures & processing
 #include "data/DataStructures.h"
@@ -26,6 +27,36 @@
 
 #define WiFicheckInterval 60000 // Check every 60 seconds
 
+unsigned long ota_progress_millis = 0;
+
+void onOTAStart() {
+  // Log when OTA has started
+  DEBUG_SERIAL.println("OTA update started!");
+  // <Add your own code here>
+}
+
+void onOTAProgress(size_t current, size_t final) {
+  // Log every 1 second
+  if (millis() - ota_progress_millis > 1000) {
+    ota_progress_millis = millis();
+    DEBUG_SERIAL.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+  }
+}
+
+void onOTAEnd(bool success) {
+  // Log when OTA has finished
+  if (success) {
+    //DEBUG_SERIAL.println("OTA update finished successfully!");
+    //update_reset_reason(Energ2Shelly_ResetReason::OTA_UPDATE);
+  } else {
+    //DEBUG_SERIAL.println("There was an error during OTA update!");
+  }
+}
+
+
+
+
+
 void setup(void)
 {
   DEBUG_SERIAL.begin(115200);
@@ -34,8 +65,14 @@ void setup(void)
 
   // Initialize watchdog timer (30s timeout)
 #ifdef ESP32
-  esp_task_wdt_init(30, true);
-  esp_task_wdt_add(NULL);
+  esp_task_wdt_config_t wdt_config = {
+        .timeout_ms = 30000,                           // 30 seconds timeout
+        .idle_core_mask = (1 << portNUM_PROCESSORS) - 1, // watch all idle tasks on all cpus
+        .trigger_panic = true                          // true = restart if needed
+    };
+    // reconfigure allready existing watchdog
+    esp_task_wdt_reconfigure(&wdt_config);  
+    esp_task_wdt_add(NULL);
 #endif
 
   // Initialize time via NTP
@@ -90,8 +127,9 @@ void setup(void)
     }
   }
 
+  ElegantOTA.begin(&server,"admin",reset_password);    // Start ElegantOTA
+  
   // Set up web server and endpoints
-
   server.on("/", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request)
             {
     AsyncWebServerResponse *response = request->beginResponse("text/html", strlen_P(HTML_HOME), [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
@@ -395,6 +433,8 @@ void loop()
     DEBUG_SERIAL.println(F("Lost WiFi connection or SSID changed!"));
     all_esp_reset(Energ2Shelly_ResetReason::WIFI_DISCONNECT);
   }
+ 
+  ElegantOTA.loop();
 
   handleblinkled();
   DEBUG_SERIAL.handleQueue();
