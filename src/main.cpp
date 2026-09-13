@@ -27,35 +27,6 @@
 
 #define WiFicheckInterval 60000 // Check every 60 seconds
 
-unsigned long ota_progress_millis = 0;
-
-void onOTAStart() {
-  // Log when OTA has started
-  DEBUG_SERIAL.println("OTA update started!");
-  // <Add your own code here>
-}
-
-void onOTAProgress(size_t current, size_t final) {
-  // Log every 1 second
-  if (millis() - ota_progress_millis > 1000) {
-    ota_progress_millis = millis();
-    DEBUG_SERIAL.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
-  }
-}
-
-void onOTAEnd(bool success) {
-  // Log when OTA has finished
-  if (success) {
-    //DEBUG_SERIAL.println("OTA update finished successfully!");
-    //update_reset_reason(Energ2Shelly_ResetReason::OTA_UPDATE);
-  } else {
-    //DEBUG_SERIAL.println("There was an error during OTA update!");
-  }
-}
-
-
-
-
 
 void setup(void)
 {
