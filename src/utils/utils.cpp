@@ -5,8 +5,15 @@
 RTC_DATA_ATTR Energ2Shelly_ResetReason rtc_reset_reason;
 RTC_DATA_ATTR uint32_t rtcMagicNumber;
 #elif defined(ESP8266)
-Energ2Shelly_ResetReason rtc_reset_reason; // Manually synced to Slot 0
+Energ2Shelly_ResetReason rtc_reset_reason; // Manually synced.
+// first 0..31 slots maybe used by OTA
+#define RTC_magic_key_slot 126
+#define RTC_reset_reason_slot 127
+
 #endif
+
+
+
 
 void clear_rtc_power_on(void)
 {
@@ -39,13 +46,13 @@ void clear_rtc_power_on(void)
   {
     uint32_t esp8266MagicNumber = 0;
     // Read Slot 1
-    ESP.rtcUserMemoryRead(1, &esp8266MagicNumber, sizeof(esp8266MagicNumber));
+    ESP.rtcUserMemoryRead(RTC_magic_key_slot, &esp8266MagicNumber, sizeof(esp8266MagicNumber));
 
     if (esp8266MagicNumber != 0xDEADBEEF)
     {
       // Magic number missing -> True cold boot (power applied)
       esp8266MagicNumber = 0xDEADBEEF;
-      ESP.rtcUserMemoryWrite(1, &esp8266MagicNumber, sizeof(esp8266MagicNumber));
+      ESP.rtcUserMemoryWrite(RTC_magic_key_slot, &esp8266MagicNumber, sizeof(esp8266MagicNumber));
 
       rtc_reset_reason = Energ2Shelly_ResetReason::POWER_ON;
     }
@@ -56,12 +63,12 @@ void clear_rtc_power_on(void)
     }
 
     // Save the evaluated state to Slot 0
-    ESP.rtcUserMemoryWrite(0, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
+     ESP.rtcUserMemoryWrite(RTC_reset_reason_slot, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
   }
   else
   {
     // Not a power-on/pin reset -> Restore previous state from Slot 0 (e.g., after software reset)
-    ESP.rtcUserMemoryRead(0, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
+    ESP.rtcUserMemoryRead(RTC_reset_reason_slot, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
   }
 #endif
 }
@@ -69,18 +76,19 @@ void clear_rtc_power_on(void)
 void update_reset_reason(Energ2Shelly_ResetReason reason)
 {
   rtc_reset_reason = reason;
-#if defined(ESP32)
-  WiFi.disconnect(false, false);
-#elif defined(ESP8266)
-  ESP.rtcUserMemoryWrite(0, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
-  WiFi.disconnect(false);
-#endif
-
+  ESP.rtcUserMemoryWrite(RTC_reset_reason_slot, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
 }
 
 void all_esp_reset(Energ2Shelly_ResetReason reason)
 {
   update_reset_reason(reason);
+#if defined(ESP32)
+  WiFi.disconnect(false, false);
+#elif defined(ESP8266)
+  WiFi.disconnect(false);
+#endif
+
+
   delay(1000);
   ESP.restart();
   delay(1000);
@@ -151,7 +159,7 @@ void status_print(void)
   DEBUG_SERIAL.print(F(" days, "));
   DEBUG_SERIAL.printf("%02d:%02d", hours, minutes);
   DEBUG_SERIAL.println(F(" h"));
-
+ 
   DEBUG_SERIAL.print(F("Reset reason: "));
   switch (rtc_reset_reason)
   {

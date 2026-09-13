@@ -28,6 +28,12 @@
 #define WiFicheckInterval 60000 // Check every 60 seconds
 
 
+void OTA_onEnd(bool success) {
+  if (success) {
+    update_reset_reason(Energ2Shelly_ResetReason::OTA_UPDATE);
+  } 
+}
+
 void setup(void)
 {
   DEBUG_SERIAL.begin(115200);
@@ -106,6 +112,7 @@ void setup(void)
     }
   }
 
+  ElegantOTA.onEnd(OTA_onEnd);
   ElegantOTA.begin(&server,"admin",reset_password);    // Start ElegantOTA
   
   // Set up web server and endpoints
