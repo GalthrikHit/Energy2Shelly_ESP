@@ -102,7 +102,7 @@ public:
             head = (head + 1) % QUEUE_SIZE;
         } else {
             // Memory safe guard: track drop count instead of corrupting data positions
-            droppedBytes++;
+            droppedBytes=droppedBytes+1;
         }
         return 1;
     }
