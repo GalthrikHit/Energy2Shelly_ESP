@@ -76,7 +76,9 @@ void clear_rtc_power_on(void)
 void update_reset_reason(Energ2Shelly_ResetReason reason)
 {
   rtc_reset_reason = reason;
+#if defined(ESP8266)
   ESP.rtcUserMemoryWrite(RTC_reset_reason_slot, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
+#endif
 }
 
 void all_esp_reset(Energ2Shelly_ResetReason reason)
