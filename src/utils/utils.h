@@ -9,10 +9,12 @@ enum class Energ2Shelly_ResetReason
   LOW_MEMORY = 1,
   MANUAL_RESET = 2,
   WIFI_DISCONNECT = 3,
-  OTHER = 4
+  OTA_UPDATE = 4,
+  OTHER = 5
 };
 
 void all_esp_reset(Energ2Shelly_ResetReason reason);
+void update_reset_reason(Energ2Shelly_ResetReason reason);
 void stackWD(void);
 uint64_t extendedMillis();
 void status_print(void);

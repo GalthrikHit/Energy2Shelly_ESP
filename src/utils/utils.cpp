@@ -66,7 +66,7 @@ void clear_rtc_power_on(void)
 #endif
 }
 
-void all_esp_reset(Energ2Shelly_ResetReason reason)
+void update_reset_reason(Energ2Shelly_ResetReason reason)
 {
   rtc_reset_reason = reason;
 #if defined(ESP32)
@@ -75,6 +75,12 @@ void all_esp_reset(Energ2Shelly_ResetReason reason)
   ESP.rtcUserMemoryWrite(0, (uint32_t *)&rtc_reset_reason, sizeof(rtc_reset_reason));
   WiFi.disconnect(false);
 #endif
+
+}
+
+void all_esp_reset(Energ2Shelly_ResetReason reason)
+{
+  update_reset_reason(reason);
   delay(1000);
   ESP.restart();
   delay(1000);
@@ -93,7 +99,7 @@ void stackWD(void)
   DEBUG_SERIAL.print(F(" bytes, Max free block: "));
   DEBUG_SERIAL.print(maxBlock);
   DEBUG_SERIAL.println(F(" bytes"));
-
+  
   if (maxBlock < MIN_HEAP_SIZE)
   {
     DEBUG_SERIAL.println(F("Low memory detected, restarting..."));
@@ -163,6 +169,9 @@ void status_print(void)
     break;
   case Energ2Shelly_ResetReason::OTHER:
     DEBUG_SERIAL.print(F("Other reset"));
+    break;
+    case Energ2Shelly_ResetReason::OTA_UPDATE:
+    DEBUG_SERIAL.print(F("OTA reset"));
     break;
   default:
     DEBUG_SERIAL.print(F("Unknown reset reason"));
