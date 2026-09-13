@@ -36,14 +36,22 @@ void setup(void)
 
   // Initialize watchdog timer (30s timeout)
 #ifdef ESP32
-  esp_task_wdt_config_t wdt_config = {
-        .timeout_ms = 30000,                           // 30 seconds timeout
+ // check SDK version.
+  #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+    // ---new version ---
+        esp_task_wdt_config_t wdt_config = {
+        .timeout_ms = 30000,                             // 30 seconds timeout
         .idle_core_mask = (1 << portNUM_PROCESSORS) - 1, // watch all idle tasks on all cpus
-        .trigger_panic = true                          // true = restart if needed
+        .trigger_panic = true                            // true = restart if needed
     };
-    // reconfigure allready existing watchdog
+    //reconfigure WD
     esp_task_wdt_reconfigure(&wdt_config);  
-    esp_task_wdt_add(NULL);
+    esp_task_wdt_add(NULL);                              
+  #else
+    // --- old SDK version 
+    esp_task_wdt_init(30, true); 
+    esp_task_wdt_add(NULL);                    
+  #endif
 #endif
 
   // Initialize time via NTP
