@@ -332,10 +332,10 @@ void WifiManagerSetup(bool stationmode)
       delay(500);
       Serial.print(".");
     }
+    update_reset_reason(Energy2Shelly_ResetReason::OTA_UPDATE);
     if (WiFi.status() == WL_CONNECTED)
     {
-      shouldSaveConfig=true;
-      update_reset_reason(Energy2Shelly_ResetReason::OTA_UPDATE);
+      shouldSaveConfig=true;      
       wifiManager.startWebPortal();
       startAttemptTime = millis();
       while (wifiManager.getWebPortalActive())
