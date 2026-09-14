@@ -6,7 +6,6 @@
 
 // Configuration & setup
 #include "config/Configuration.h"
-#include <ElegantOTA.h>
 
 // Data structures & processing
 #include "data/DataStructures.h"
@@ -28,17 +27,10 @@
 #define WiFicheckInterval 60000 // Check every 60 seconds
 
 
-void OTA_onEnd(bool success) {
-  if (success) {
-    update_reset_reason(Energ2Shelly_ResetReason::OTA_UPDATE);
-  } 
-}
-
 void setup(void)
 {
   DEBUG_SERIAL.begin(115200);
-  clear_rtc_power_on();
-  WifiManagerSetup();
+  WifiManagerSetup(clear_rtc_power_on()==Energy2Shelly_ResetReason::RECONFIGURE);
 
   // Initialize watchdog timer (30s timeout)
 #ifdef ESP32
@@ -111,10 +103,7 @@ void setup(void)
       digitalWrite(led, HIGH);
     }
   }
-
-  ElegantOTA.onEnd(OTA_onEnd);
-  ElegantOTA.begin(&server,"admin",reset_password);    // Start ElegantOTA
-  
+ 
   // Set up web server and endpoints
   server.on("/", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -185,7 +174,49 @@ void setup(void)
       request->send(200, "text/plain", "Resetting WiFi configuration, please log back into the hotspot to reconfigure...\r\n");
     } });
 
-  // Shelly RPC endpoints called via HTTP GET method
+
+
+  server.on("/update", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+    String html = "<!DOCTYPE html><html><head><title>Update Confirmation</title>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<style>body{font-family:Arial,sans-serif;text-align:center;padding:20px;}";
+    html += ".btn{padding:10px 20px;margin:10px;cursor:pointer;text-decoration:none;display:inline-block;border-radius:5px;font-size:16px;}";
+    html += ".btn-yes{background-color:#d9534f;color:white;border:none;}";
+    html += ".btn-no{background-color:#5bc0de;color:white;border:none;}</style></head><body>";
+    html += "<h2>Update Configuration?</h2>";
+    html += "<p>Are you sure you want to update the WiFi configuration?</p>";
+    html += "<form method='POST' style='display:inline;' accept-charset='UTF-8'>";
+    if (reset_password != nullptr && strlen(reset_password) > 0) {
+      html += "<input type='password' name='reset_password' placeholder='Enter reset password' required><br/>";
+    }
+    html += "<button type='submit' class='btn btn-yes'>Yes, Update</button>";
+    html += "</form>";
+    html += "<a href='/' class='btn btn-no'>Cancel</a>";
+    html += "</body></html>";
+    request->send(200, "text/html", html); });
+
+  server.on("/update", AsyncWebRequestMethod::HTTP_POST, [](AsyncWebServerRequest *request)
+            {
+    if (reset_password != nullptr && strlen(reset_password) > 0) {
+       if (request->hasParam("reset_password", true)) {
+        if (String(reset_password) == request->getParam("reset_password", true)->value()) {
+          shouldupdate = true;
+          request->send(200, "text/plain", "Update device. Entering WiFi configuration\r\n");
+        } else {
+          request->send(403, "text/plain", "Unauthorized: Invalid reset password.\r\n");
+        }
+      } else {
+        request->send(400, "text/plain", "Reset password missing.\r\n");
+      }
+    } else {
+      shouldupdate = true;
+      request->send(200, "text/plain", "Update device. Entering WiFi configuration...\r\n");
+    } });
+
+
+
+    // Shelly RPC endpoints called via HTTP GET method
   server.on("/rpc/EM.GetConfig", AsyncWebRequestMethod::HTTP_GET, [](AsyncWebServerRequest *request)
             {
     EMGetConfig();
@@ -319,6 +350,9 @@ void worker_loop(int currentMillis)
   MDNS.update();
 #endif
   parseUdpRPC();
+   if (shouldupdate) {
+    all_esp_reset(Energy2Shelly_ResetReason::RECONFIGURE);
+  }
   if (shouldResetConfig)
   {
 #ifdef ESP32
@@ -417,10 +451,8 @@ void loop()
   if (millis() - WiFilastConnectionCheck > WiFicheckInterval)
   {
     DEBUG_SERIAL.println(F("Lost WiFi connection or SSID changed!"));
-    all_esp_reset(Energ2Shelly_ResetReason::WIFI_DISCONNECT);
+    all_esp_reset(Energy2Shelly_ResetReason::WIFI_DISCONNECT);
   }
- 
-  ElegantOTA.loop();
 
   handleblinkled();
   DEBUG_SERIAL.handleQueue();

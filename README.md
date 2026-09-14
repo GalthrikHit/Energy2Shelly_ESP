@@ -20,7 +20,9 @@ Connect your ESP to your PC using USB and follow the instructions on the [webfla
 
 ## Option 3: OTA update if you have previously installed Energy2Shelly
 Directly download a matching OTA-binary for your ESP device from the releases page and install the over-the-air update using WifiManager on your Energy2Shelly.<br>
-After basic WifiManager setup you can update via <code>http://IP-address/update</code><br> (user="admin")
+You can reenter WifiManager Config page again after successfull config by <code>http://IP-address/update</code> (reboots)<br> 
+When WifiManger has started again within your network, you can update SW  <code>http://IP-address/update</code> or reconfigure your settings. Don't forget to safe your settings.
+
 
 # Configuration
 #### 1. Power device and wait for a hotspot named "Energy2Shelly"
