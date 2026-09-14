@@ -2,7 +2,7 @@
 #include "config/Configuration.h"
 // 1. Variable definitions and platform separation
 #if defined(ESP32)
-RTC_DATA_ATTR Energ2Shelly_ResetReason rtc_reset_reason;
+RTC_DATA_ATTR Energy2Shelly_ResetReason rtc_reset_reason;
 RTC_DATA_ATTR uint32_t rtcMagicNumber;
 #elif defined(ESP8266)
 Energy2Shelly_ResetReason rtc_reset_reason; // Manually synced.
@@ -26,12 +26,12 @@ Energy2Shelly_ResetReason clear_rtc_power_on(void)
     if (rtcMagicNumber != 0xDEADBEEF)
     {
       rtcMagicNumber = 0xDEADBEEF; // Prepare for the next boot cycle
-      rtc_reset_reason = Energ2Shelly_ResetReason::POWER_ON;
+      rtc_reset_reason = Energy2Shelly_ResetReason::POWER_ON;
     }
     else
     {
       // If the magic number WAS present, but hardware reports POWERON/EXT, it was the pin!
-      rtc_reset_reason = Energ2Shelly_ResetReason::MANUAL_RESET;
+      rtc_reset_reason = Energy2Shelly_ResetReason::MANUAL_RESET;
     }
   }
   // For all other reset reasons (e.g., Software Restart, Deep Sleep),
