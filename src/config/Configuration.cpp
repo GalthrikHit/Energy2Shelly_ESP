@@ -321,7 +321,8 @@ void WifiManagerSetup(bool stationmode)
   wifiManager.addParameter(&param_tibber_password);
   wifiManager.addParameter(&param_tibber_password_show_password);
   wifiManager.setConfigPortalTimeout(180);
-
+  std::vector<const char *> usermenu = {"wifi","info","param","exit","sep","update"};
+  wifiManager.setMenu(usermenu);
   if (stationmode)
   {
     WiFi.mode(WIFI_STA);
