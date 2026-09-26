@@ -1,5 +1,6 @@
 #include "Configuration.h"
 #include "../utils/utils.h"
+#include "../parsers/SunspecParser.h"
 unsigned long startMillis = 0;
 unsigned long currentMillis;
 // for time synchronization
@@ -246,20 +247,20 @@ void WifiManagerSetup(bool stationmode)
   static WiFiManagerParameter custom_shelly_port("shelly_port", "<b>Shelly UDP port</b><br><code>1010</code> or <code>2220</code> depending on Marstek Venus model and firmware version", shelly_port, 6);
   static WiFiManagerParameter custom_sma_id("sma_id", "<b>SMA serial number</b><br>optional serial number if you have more than one SMA EM/HM in your network", sma_id, 16);
   static WiFiManagerParameter custom_section2("<hr><h3>MQTT options</h3>");
-  static WiFiManagerParameter custom_mqtt_topic("topic", "<b>MQTT Topic</b>", mqtt_topic, 90);
+  static WiFiManagerParameter custom_mqtt_topic("topic", "<b>MQTT Topic or JSON for SUNSPEC Freq F, B base, C count </b>", mqtt_topic, 90);
   static WiFiManagerParameter custom_mqtt_user("user", "<b>MQTT user</b> (optional)", mqtt_user, 40);
   static WiFiManagerParameter custom_mqtt_passwd("passwd", "<b>MQTT password</b> (optional)", mqtt_passwd, 40, "type='password'");
   static WiFiManagerParameter param_mqtt_passwd_show_password(buf_mqtt_pwd_show_pwd);
   static WiFiManagerParameter custom_section3("<hr><h3>Modbus TCP options</h3>");
   static WiFiManagerParameter custom_modbus_dev("modbus_dev", "<b>Modbus device ID</b><br><code>71</code> for Kostal SEM", modbus_dev, 60);
   static WiFiManagerParameter custom_section4("<hr><h3>JSON paths for MQTT and generic HTTP</h3>");
-  static WiFiManagerParameter custom_power_path("power_path", "<b>Total power JSON path</b><br>e.g. <code>ENERGY.Power</code> or <code>TRIPHASE</code> for tri-phase data", power_path, 60);
-  static WiFiManagerParameter custom_pwr_export_path("pwr_export_path", "<b>Export power JSON path</b><br>Optional, for net calc (e.g. \"i-e\"", pwr_export_path, 60);
-  static WiFiManagerParameter custom_power_l1_path("power_l1_path", "<b>Phase 1 power JSON path</b><br>optional", power_l1_path, 60);
-  static WiFiManagerParameter custom_power_l2_path("power_l2_path", "<b>Phase 2 power JSON path</b><br>optional", power_l2_path, 60);
-  static WiFiManagerParameter custom_power_l3_path("power_l3_path", "<b>Phase 3 power JSON path</b><br>optional", power_l3_path, 60);
-  static WiFiManagerParameter custom_energy_in_path("energy_in_path", "<b>Energy from grid JSON path</b><br>e.g. <code>ENERGY.Grid</code>", energy_in_path, 60);
-  static WiFiManagerParameter custom_energy_out_path("energy_out_path", "<b>Energy to grid JSON path</b><br>e.g. <code>ENERGY.FeedIn</code>", energy_out_path, 60);
+  static WiFiManagerParameter custom_power_path("power_path", "<b>Total power JSON path</b><br>e.g. <code>ENERGY.Power</code> or <code>TRIPHASE</code> for tri-phase data or JSON for SUNSPEC real power registers  ", power_path, 60);
+  static WiFiManagerParameter custom_pwr_export_path("pwr_export_path", "<b>Export power JSON path</b><br>Optional, for net calc (e.g. \"i-e\", or JSON SUNSPEC apparant power registers", pwr_export_path, 60);
+  static WiFiManagerParameter custom_power_l1_path("power_l1_path", "<b>Phase 1 power JSON path</b><br>optional or JSON SUNSPEC voltage registers", power_l1_path, 60);
+  static WiFiManagerParameter custom_power_l2_path("power_l2_path", "<b>Phase 2 power JSON path</b><br>optional or JSON SUNSPEC current registers", power_l2_path, 60);
+  static WiFiManagerParameter custom_power_l3_path("power_l3_path", "<b>Phase 3 power JSON path</b><br>optional or JSON SUNSPEC power factor registers", power_l3_path, 60);
+  static WiFiManagerParameter custom_energy_in_path("energy_in_path", "<b>Energy from grid JSON path</b><br>e.g. <code>ENERGY.Grid</code> or JSUN SUNSPEC import registers", energy_in_path, 60);
+  static WiFiManagerParameter custom_energy_out_path("energy_out_path", "<b>Energy to grid JSON path</b><br>e.g. <code>ENERGY.FeedIn</code>  or JSUN SUNSPEC export registers", energy_out_path, 60);
   // TibberPulse section
   static WiFiManagerParameter param_section_tibberpulse("<hr><h3>TibberPulse options</h3>");
   static WiFiManagerParameter param_tibber_host_port("tibber_host_port", "Hostname/IP[:port] <span title=\"e.g.: 192.168.0.1:8080\" style=\"cursor: help;\" aria-label=\"Help\" tabindex=\"0\">(?)</span>", tibber_host, 40);
@@ -466,6 +467,14 @@ void WifiManagerSetup(bool stationmode)
   else if (strcmp(input_type, "SUNSPEC") == 0)
   {
     dataSUNSPEC = true;
+    setupSUNSPEC_power_register(power_path);
+    setupSUNSPEC_apparant_power_register(pwr_export_path);
+    setupSUNSPEC_voltage_register(power_l1_path);
+    setupSUNSPEC_current_register(power_l2_path);
+    setupSUNSPEC_power_factor_register(power_l3_path);
+    setupSUNSPEC_real_energy_exported_register(energy_in_path);
+    setupSUNSPEC_real_energy_imported_register(energy_out_path);
+    setupSUNSPEC_frequency_register_base_and_count(mqtt_topic);
     DEBUG_SERIAL.println(F("Enabling SUNSPEC data input"));
   }
   else if (strcmp(input_type, "TIBBERPULSE") == 0)
