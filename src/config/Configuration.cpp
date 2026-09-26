@@ -467,14 +467,7 @@ void WifiManagerSetup(bool stationmode)
   else if (strcmp(input_type, "SUNSPEC") == 0)
   {
     dataSUNSPEC = true;
-    setupSUNSPEC_power_register(power_path);
-    setupSUNSPEC_apparant_power_register(pwr_export_path);
-    setupSUNSPEC_voltage_register(power_l1_path);
-    setupSUNSPEC_current_register(power_l2_path);
-    setupSUNSPEC_power_factor_register(power_l3_path);
-    setupSUNSPEC_real_energy_exported_register(energy_in_path);
-    setupSUNSPEC_real_energy_imported_register(energy_out_path);
-    setupSUNSPEC_frequency_register_base_and_count(mqtt_topic);
+    setupSUNSPEC_from_configpage();
     DEBUG_SERIAL.println(F("Enabling SUNSPEC data input"));
   }
   else if (strcmp(input_type, "TIBBERPULSE") == 0)
