@@ -390,17 +390,7 @@ void worker_loop(int currentMillis)
   }
   if (shouldResetConfig)
   {
-#ifdef ESP32
-    WiFi.disconnect(true, true);
-#else
-    // WiFiManager may leave persistent=false; force it so disconnect(true)
-    // actually erases the SDK-saved credentials in flash.
-    WiFi.persistent(true);
-    WiFi.disconnect(true);
-    ESP.eraseConfig();
-#endif
-    delay(1000);
-    ESP.restart();
+     wifi_reset();
   }
   if (dataMQTT)
   {
@@ -493,6 +483,9 @@ void loop()
     DEBUG_SERIAL.println(F("Lost WiFi connection or SSID changed!"));
     all_esp_reset(Energy2Shelly_ResetReason::WIFI_DISCONNECT);
   }
+
+  // set reset counter to 0, after one minute
+  checkreset_counter();
 
   handleblinkled();
   DEBUG_SERIAL.handleQueue();
