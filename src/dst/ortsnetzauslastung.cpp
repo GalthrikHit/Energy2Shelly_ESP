@@ -84,7 +84,7 @@ void ONA_sendMeasurementTask(void * pvParameters) {
                 doc["l3_v"] = data.l3_v;
                 doc["smartmeter_model"] = "Energy2Shelly";
                 doc["integration_version"] = VERSION_BUILD;                
-                doc["freq"] = data.frequency;
+                doc["grid_frequency_hz"] = data.frequency;
 
                 requestBody = "";
                 serializeJson(doc, requestBody);
@@ -144,7 +144,7 @@ void ONA_loop_state_machine() {
                 doc["l3_v"] = ona_esp8266_buffer.l3_v;
                 doc["smartmeter_model"] = "Energy2Shelly";
                 doc["integration_version"] = VERSION_BUILD;
-                doc["freq"] = ona_esp8266_buffer.frequency;
+                doc["grid_frequency_hz"] = ona_esp8266_buffer.frequency;
 
                 requestBody = "";
                 serializeJson(doc, requestBody);                
