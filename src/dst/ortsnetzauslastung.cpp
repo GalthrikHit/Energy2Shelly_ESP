@@ -2,6 +2,7 @@
 #include "../data/DataProcessing.h"
 #include "../data/DataStructures.h"
 #include "../utils/utils.h"
+#include "ortsnetzauslastung.h"
 
 #ifdef ONA_ACTIVE
 
@@ -112,7 +113,7 @@ static MeasurementData ona_esp8266_buffer;
 static volatile bool ona_esp8266_has_data = false;
 static BearSSL::WiFiClientSecure ona_client;
 static HTTPClient http_client;
-
+static bool ona_setup_active = false;
 
 static unsigned long ona_timeoutStart = 0;
 const unsigned long ONA_TIMEOUT_MS = 5000;
@@ -127,7 +128,7 @@ static ONA_State ona_currentState = ONA_IDLE;
 void ONA_loop_state_machine() {
     static String requestBody;
     static JsonDocument doc;
-
+    if (ona_setup_active==false) return;
     switch (ona_currentState) {
         case ONA_IDLE:
             if (ona_esp8266_has_data) {
@@ -202,6 +203,12 @@ void ONA_loop_state_machine() {
 bool ONA_sendMeasurement() {
     DEBUG_SERIAL.println("Ona");
 
+#ifdef ESP8266
+    if (extendedMillis()<(300ull*1000ull)) {// do not send data in the first 5 minutes
+        return false;
+    }
+    if (ona_setup_active==false) ONA_Setup();
+#endif
     if (phase_number != 3) {
         DEBUG_SERIAL.println(F("Ona: Phase number must be 3"));
         return false; 
@@ -259,6 +266,7 @@ void ONA_Setup() {
 #elif defined(ESP8266)
     ona_client.setBufferSizes(1024, 512);
     ona_client.setInsecure();
+    ona_setup_active=true;
 #endif
 }
 
