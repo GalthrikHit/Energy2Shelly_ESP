@@ -39,8 +39,8 @@
 
 
 
-extern bool enableConsoleOutputSerial; // Global flag to control console output visibility
-extern bool enableConsoleOutputWeb; // Global flag to control console output visibility
+extern volatile bool enableConsoleOutputSerial; // Global flag to control console output visibility
+extern volatile bool enableConsoleOutputWeb; // Global flag to control console output visibility
 
 extern AsyncWebSocket wsConsole;
 // Custom Logger class inheriting from Print to natively support all data types

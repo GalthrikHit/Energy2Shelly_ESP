@@ -588,7 +588,7 @@ void loop()
     DEBUG_SERIAL.handleQueue();
     if (!error) {
       mergeJson(config_doc.as<JsonObject>(), update_config_doc.as<JsonObjectConst>());  
-      interprete_parameters();
+      //interprete_parameters();
       save_parameters();
     }
     update_config_doc.clear();        

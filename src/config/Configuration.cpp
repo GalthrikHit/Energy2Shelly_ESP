@@ -184,7 +184,8 @@ void interprete_parameters()
     led_i = false;
   }
 
-  String temp=config_doc["console"]["web_console"]|"";
+  if (config_doc["console"]["web_console"].isNull())  config_doc["console"]["web_console"]="true";
+  String temp=config_doc["console"]["web_console"];
   if (strlen(temp.c_str())>=4 && strncmp(temp.c_str(), "true",4) == 0) {
     enableConsoleOutputWeb=true;
   }
@@ -260,11 +261,13 @@ void save_parameters() {
 void load_parameters() {
   preferences.begin("e2s_config", false);
   config_doc.clear();
+  DeserializationError error=DeserializationError::EmptyInput;
   if (preferences.isKey("config_doc")) {
     json_prefs_string = preferences.getString("config_doc", "");
     DEBUG_SERIAL.println(json_prefs_string);
-    deserializeJson(config_doc, json_prefs_string);
-  } else {
+    error = deserializeJson(config_doc, json_prefs_string);
+  } 
+  if (error!=DeserializationError::Ok)  {
     // Load individual parameters if the combined config_doc is not present
     config_doc["basic"]["reset_password"] = preferences.getString("reset_password", "");
     config_doc["basic"]["input_type"] = preferences.getString("input_type", "");
@@ -355,8 +358,8 @@ void load_parameters() {
 
 #if DEBUG
 WebDebugLogger DebugConsole;
-bool enableConsoleOutputSerial = true;
-bool enableConsoleOutputWeb = true;
+volatile bool enableConsoleOutputSerial = true;
+volatile bool enableConsoleOutputWeb = true;
 
 #else
 NullDebug EmptyConsole;
