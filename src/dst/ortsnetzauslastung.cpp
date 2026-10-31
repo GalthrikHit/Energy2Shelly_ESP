@@ -30,6 +30,7 @@ struct MeasurementData {
 
 const char* api_url = "https://www.ortsnetz-auslastung.de/v1/measurements";
 
+#ifdef ESP32
 const char ona_root_ca[] PROGMEM = R"=====(
 -----BEGIN CERTIFICATE-----
 MIICGzCCAaGgAwIBAgIQQdKd0XLq7qeAwSxs6S+HUjAKBggqhkjOPQQDAzBPMQsw
@@ -46,6 +47,7 @@ tL4ndQavEi51mI38AjEAi/V3bNTIZargCyzuFJ0nN6T5U6VR5CmD1/iQMVtCnwr1
 /q4AaOeMSQ+2b1tbFfLn
 -----END CERTIFICATE-----
 )=====";
+#endif
 
 String ona_lastResponse = "";
 int ona_lastResponseCode = 0;
