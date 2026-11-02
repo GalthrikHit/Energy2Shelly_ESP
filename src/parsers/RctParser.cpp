@@ -504,7 +504,7 @@ void parseRCT()
       {
         if (!(freshMask & (1u << i)))
         {
-          DEBUG_SERIAL.printf(" %08X", rctOids[i]);
+          DEBUG_SERIAL.printf(" %08X", (unsigned int)rctOids[i]);
         }
       }
       DEBUG_SERIAL.println();
