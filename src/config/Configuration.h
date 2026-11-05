@@ -194,6 +194,30 @@ public:
     #define DEBUG_SERIAL EmptyConsole
 #endif
 
+
+#define MAX_NUMBER_OF_CHARS_PRETTY_JSON 80
+template <typename T>
+struct ChunkedSerialWriter : public Print {
+    T& targetSerial; 
+    size_t chunkSize;
+    size_t counter;
+
+    ChunkedSerialWriter(T& serial, size_t chunk) 
+        : targetSerial(serial), chunkSize(chunk), counter(0) {}
+
+    size_t write(uint8_t c) override {
+        size_t n = targetSerial.write(c);
+        counter++;
+
+        if (counter >= chunkSize || c == '\n') {
+            targetSerial.handleQueue();
+            delay(10);
+            counter = 0;               
+        }
+        return n;
+    }
+};
+
 //#define DEBUG_SERIAL if(DEBUG)Serial
 
 extern unsigned long startMillis;

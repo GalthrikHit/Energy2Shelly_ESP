@@ -553,7 +553,9 @@ void loop()
   if (parametersUpdated) {
     DEBUG_SERIAL.println(F("New keys"));
     load_parameters();
-    serializeJsonPretty(config_doc, DEBUG_SERIAL);
+    ChunkedSerialWriter<decltype(DEBUG_SERIAL)> chunkWriter(DEBUG_SERIAL, MAX_NUMBER_OF_CHARS_PRETTY_JSON);
+    serializeJsonPretty(config_doc, chunkWriter);
+    DEBUG_SERIAL.handleQueue();
     DEBUG_SERIAL.println();    
     interprete_parameters();
     parametersUpdated = false;
