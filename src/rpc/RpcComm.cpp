@@ -35,60 +35,59 @@ void webSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEve
       {
         AwsFrameInfo *info = (AwsFrameInfo *)arg;
         if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-          data[len] = 0;
-          deserializeJson(json, data);
+          deserializeJson(json, data,len);
           rpcId = json["id"];
           if (json["method"] == "Shelly.GetDeviceInfo") {
             strcpy(rpcUser, "EMPTY");
             shellyGetDeviceInfo();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "Shelly.GetComponents") {
             strcpy(rpcUser, "EMPTY");
             shellyGetComponents();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "Shelly.GetConfig") {
             strcpy(rpcUser, "EMPTY");
             shellyGetConfig();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "Shelly.GetStatus") {
             strcpy(rpcUser, "EMPTY");
             shellyGetStatus();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "Shelly.ListMethods") {
             strcpy(rpcUser, "EMPTY");
             shellyListMethods();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "EM.GetStatus") {
             strcpy(rpcUser, json["src"]);
             EMGetStatus();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "EMData.GetStatus") {
             strcpy(rpcUser, json["src"]);
             EMDataGetStatus();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "EM.GetConfig") {
             EMGetConfig();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "Script.GetCode") {
             scriptGetCode();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "Script.List") {
             scriptList();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else if (json["method"] == "WiFi.GetStatus") {
             wifiGetStatus();
             rpcWrapper();
-            webSocket.textAll(serJsonResponse);
+            client->text(serJsonResponse);
           } else {
             DEBUG_SERIAL.printf("Websocket: unknown request: %s\n", data);
           }
