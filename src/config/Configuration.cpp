@@ -203,6 +203,9 @@ void interprete_parameters()
   config_doc.clear();
 
   filter["shelly"]=true; filter["basic"]=true; filter["console"]=true; filter["led"]=true;
+#ifdef ONA_ACTIVE
+  filter["ona"]=true;
+#endif
 
   // Interpret the loaded parameters and set flags accordingly
   load_filtered_parameters(filter);
@@ -299,9 +302,18 @@ void interprete_parameters()
 #ifdef ONA_ACTIVE
   if (config_doc["ona"]["publish_period"].isNull())  config_doc["ona"]["publish_period"]=0;
   enableONA=config_doc["ona"]["publish_period"].as<int>()>0;
-#endif
+  
   if (config_doc["ona"]["latitude"].isNull())  config_doc["ona"]["latitude"]=0.0;
   if (config_doc["ona"]["longitude"].isNull()) config_doc["ona"]["longitude"]=0.0;
+
+
+
+  if (!enableONA) {
+    filter.clear();
+    filter["ona"]=true;
+    remove_filtered_parameters_ram(filter);
+  }
+#endif
 
 }
 
