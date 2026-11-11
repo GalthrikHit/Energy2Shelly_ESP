@@ -5,7 +5,6 @@
 // Global data structures
 PowerData PhasePower[3];
 EnergyData PhaseEnergy[3];
-String serJsonResponse;
 
 double round2(double value) {
   return round(value * 100.0) / 100.0;
@@ -120,9 +119,9 @@ void setEnergyData(double totalEnergyGridSupply, double totalEnergyGridFeedIn) {
   DEBUG_SERIAL.println(totalEnergyGridFeedIn);
 }
 
-void setJsonPathPower(JsonDocument json) {
+void setJsonPathPower(JsonDocument &json) {
   // If the incoming JSON already uses Shelly 3EM field names, parse directly
-  double offsetPerPhase = String(power_offset).toDouble() / 3.0;  // distribute offset equally across phases
+  double offsetPerPhase = power_offset / 3.0;  // distribute offset equally across phases
   
   if (json["a_current"].is<JsonVariant>() || json["a_act_power"].is<JsonVariant>()) {
     DEBUG_SERIAL.println(F("Parsing direct Shelly 3EM payload"));
