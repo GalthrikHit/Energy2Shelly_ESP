@@ -19,17 +19,16 @@ size_t scriptList(char* buffer, size_t maxLen) {
 
 // Aligned with Shelly API docs: Shelly.ListMethods
 size_t shellyListMethods(char* buffer, size_t maxLen) {
-    int written = snprintf_P(buffer, maxLen, 
-        PSTR("{\"methods\":[\"EM.GetStatus\",\"EM.GetConfig\",\"EMData.GetStatus\",\"Shelly.GetComponents\","
-        "\"Shelly.GetConfig\",\"Shelly.GetDeviceInfo\",\"Shelly.GetStatus\",\"Sys.GetConfig\",\"Sys.GetStatus\",\"WiFi.GetStatus\"]}")
-    );
+    int written = snprintf_P(buffer, maxLen, PSTR("{\"methods\":[\"EM.GetStatus\",\"EM.GetConfig\",\"EMData.GetStatus\",\"Shelly.GetComponents\","
+        "\"Shelly.GetConfig\",\"Shelly.GetDeviceInfo\",\"Shelly.GetStatus\",\"Sys.GetConfig\",\"Sys.GetStatus\",\"WiFi.GetStatus\"]}"
+    ));
     blinkled(ledblinkduration);
     return finalize_buffer(written, maxLen);
 }
 
 // Router function allocating a local payload per request channel to prevent race conditions
 void buildRpcResponse(const char* method, long rpcId, const char* src, String& output) {
-    const size_t INNER_SIZE = 1536; 
+    const size_t INNER_SIZE = 1792; 
     String innerJson;
     innerJson.reserve(INNER_SIZE);
     char* innerPtr = const_cast<char*>(innerJson.c_str());
@@ -45,6 +44,8 @@ void buildRpcResponse(const char* method, long rpcId, const char* src, String& o
     else if (strcmp_P(method, PSTR("Script.GetCode")) == 0) scriptGetCode(innerPtr, INNER_SIZE);
     else if (strcmp_P(method, PSTR("Script.List")) == 0) scriptList(innerPtr, INNER_SIZE);
     else if (strcmp_P(method, PSTR("WiFi.GetStatus")) == 0) wifiGetStatus(innerPtr, INNER_SIZE);
+    else if (strcmp_P(method, PSTR("Sys.GetStatus")) == 0) sysGetStatus(innerPtr, INNER_SIZE);
+    else if (strcmp_P(method, PSTR("Sys.GetConfig")) == 0) sysGetConfig(innerPtr, INNER_SIZE);
     else {
         output = "{\"id\":" + String(rpcId) + ",\"src\":\"" + String(shelly_name.c_str()) + "\",\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}";
         return;
@@ -137,7 +138,8 @@ void notifyStatusWebSocket() {
       PSTR("\"em:0\":{\"id\":0,\"a_current\":%.2f,\"a_voltage\":%.2f,\"a_act_power\":%.2f,\"a_aprt_power\":%.2f,\"a_pf\":%.2f,\"a_freq\":%.2f,"
       "\"b_current\":%.2f,\"b_voltage\":%.2f,\"b_act_power\":%.2f,\"b_aprt_power\":%.2f,\"b_pf\":%.2f,\"b_freq\":%.2f,"
       "\"c_current\":%.2f,\"c_voltage\":%.2f,\"c_act_power\":%.2f,\"c_aprt_power\":%.2f,\"c_pf\":%.2f,\"c_freq\":%.2f,"
-      "\"n_current\":null,\"total_current\":%.2f,\"total_act_power\":%.2f,\"total_aprt_power\":%.2f,\"user_calibrated_phase\":[]}"),
+      "\"n_current\":null,\"total_current\":%.2f,\"total_act_power\":%.2f,\"total_aprt_power\":%.2f,\"user_calibrated_phase\":[]}")
+      ,
       PhasePower[0].current, PhasePower[0].voltage, PhasePower[0].power, PhasePower[0].apparentPower, PhasePower[0].powerFactor, PhasePower[0].frequency,
       PhasePower[1].current, PhasePower[1].voltage, PhasePower[1].power, PhasePower[1].apparentPower, PhasePower[1].powerFactor, PhasePower[1].frequency,
       PhasePower[2].current, PhasePower[2].voltage, PhasePower[2].power, PhasePower[2].apparentPower, PhasePower[2].powerFactor, PhasePower[2].frequency,
@@ -148,14 +150,11 @@ void notifyStatusWebSocket() {
   if (energyChanged) {
     snprintf_P(emDataStatusBuffer, sizeof(emDataStatusBuffer),
       PSTR("\"emdata:0\":{\"id\":0,\"a_total_act_energy\":%.2f,\"a_total_act_ret_energy\":%.2f,"
-      "\"b_total_act_energy\":%.2f,\"b_total_act_ret_energy\":%.2f,"
-      "\"c_total_act_energy\":%.2f,\"c_total_act_ret_energy\":%.2f,"
-      "\"total_act\":%.2f,\"total_act_ret\":%.2f}"),
-      PhaseEnergy[0].consumption, PhaseEnergy[0].gridfeedin,
-      PhaseEnergy[1].consumption, PhaseEnergy[1].gridfeedin,
-      PhaseEnergy[2].consumption, PhaseEnergy[2].gridfeedin,
-      PhaseEnergy[0].consumption + PhaseEnergy[1].consumption + PhaseEnergy[2].consumption,
-      PhaseEnergy[0].gridfeedin + PhaseEnergy[1].gridfeedin + PhaseEnergy[2].gridfeedin
+           "\"b_total_act_energy\":%.2f,\"b_total_act_ret_energy\":%.2f,"
+           "\"c_total_act_energy\":%.2f,\"c_total_act_ret_energy\":%.2f,"
+           "\"total_act\":%.2f,\"total_act_ret\":%.2f}"),
+      PhaseEnergy[0].consumption, PhaseEnergy[0].gridfeedin, PhaseEnergy[1].consumption, PhaseEnergy[1].gridfeedin, PhaseEnergy[2].consumption, PhaseEnergy[2].gridfeedin,
+      PhaseEnergy[0].consumption + PhaseEnergy[1].consumption + PhaseEnergy[2].consumption, PhaseEnergy[0].gridfeedin + PhaseEnergy[1].gridfeedin + PhaseEnergy[2].gridfeedin
     );
   }
 
@@ -184,10 +183,10 @@ void notifyStatusWebSocket() {
 void parseUdpRPC() {
   uint8_t buffer[1024];
   int packetSize = UdpRPC.parsePacket();
-  if (packetSize) {
+  if (packetSize > 0) {
     JsonDocument json;
-    int rSize = UdpRPC.read(buffer, 1024);
-    buffer[rSize] = 0;
+    int rSize = UdpRPC.read(buffer, sizeof(buffer) - 1);
+    buffer[rSize] = '\0';
     DEBUG_SERIAL.print(F("Received UDP packet on port 1010: "));
     DEBUG_SERIAL.println((char *)buffer);
     deserializeJson(json, buffer);
