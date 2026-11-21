@@ -11,6 +11,7 @@ src/web/chart_js.h
 sdkconfig.esp32
 sdkconfig.esp32-c3
 sdkconfig.esp32-s3
+sdkconfig.esp32-s3-N8
 src/CMakeLists.txt
 src/web/home_html.h
 src/web/webconsole_html.h
@@ -18,3 +19,4 @@ src/web/webplotter_html.h
 src/web/update_error_html.h
 src/web/update_index_html.h
 src/web/update_success_html.h
+managed_components
