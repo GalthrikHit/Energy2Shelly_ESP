@@ -1,8 +1,13 @@
 #include "../config/Configuration.h"
 #include "SmlCommon.h"
 
+#define HTTP_TIMEOUT 5000
+#define INACTIVITY_READ_TIMEOUT 3000
+
 static uint8_t guess = 0;
 static uint8_t success_counter = 0;
+
+const char* tibber_rpc[] = {"/data.json?node_id=", "/node_data.json?node_id="}; // fixed rpc path
 
 void TibberPulse_URL_guesser(void)
 {
@@ -21,24 +26,22 @@ bool parseTibberPulse()
 {
   bool ret = false;
   DEBUG_SERIAL.print(F("Querying TibberPulse raw SML: "));
-  String url = "http://";
-  url += String(tibber_host);
-  url += String(tibber_rpc[guess]);
-  url += String(tibber_nodeid);
-  DEBUG_SERIAL.printf("URL:%s, user:%s\r\n", url.c_str(), tibber_user);
-  http.begin(wifi_client, url);
-  http.setAuthorization(tibber_user, tibber_password);
-  http.setTimeout(5000);
-  int httpResponseCode = http.GET();
+  char url[128];
+  snprintf_P(url, sizeof(url), PSTR("http://%s%s%u"), tibber_host, tibber_rpc[guess], tibber_nodeid);
+  DEBUG_SERIAL.printf("URL:%s, user:%s\r\n", url, tibber_user);
+  http->begin(wifi_client, url);
+  http->setAuthorization(tibber_user, tibber_password);
+  http->setTimeout(HTTP_TIMEOUT);
+  int httpResponseCode = http->GET();
   if (httpResponseCode > 0)
   {
 
-    WiFiClient *w = http.getStreamPtr();    
+    WiFiClient *w = http->getStreamPtr();    
     sml_states_t s;
     unsigned int counter=0;
     unsigned long timeout = millis();
     // keep polling until exit condition met
-    while (http.connected() && (w->available() || w->peek() != -1))
+    while (http->connected() && (w->available() || w->peek() != -1))
     {
       if (w->available())
       {
@@ -62,7 +65,7 @@ bool parseTibberPulse()
       }
 
       // Abort in case of inactivity
-      if (millis() - timeout > 3000)
+      if (millis() - timeout > INACTIVITY_READ_TIMEOUT)
       {
         DEBUG_SERIAL.println(F("Error: Timeout during reading stream."));
         break;
@@ -83,6 +86,6 @@ bool parseTibberPulse()
   }
   if (ret==false)  TibberPulse_URL_guesser();
   // Free resources
-  http.end();
+  http->end();
   return ret;
 }
