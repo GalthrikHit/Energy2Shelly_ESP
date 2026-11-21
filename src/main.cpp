@@ -103,36 +103,13 @@ void setup(void)
   DEBUG_SERIAL.begin(115200);
  
 #ifdef ESP32
- esp_err_t err;
- #if CONFIG_IDF_TARGET_ESP32C3
-    esp_pm_config_esp32c3_t pm_config = {
-      .max_freq_mhz = 160,
-      .min_freq_mhz = 80,
-      .light_sleep_enable = false
+  esp_err_t err;
+  esp_pm_config_esp32_t pm_config = {
+        .max_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ,
+        .min_freq_mhz = 80,
+        .light_sleep_enable = false
     };
-    err = esp_pm_configure(&pm_config);
-
-  #elif CONFIG_IDF_TARGET_ESP32S3
-    esp_pm_config_esp32s3_t pm_config = {
-      .max_freq_mhz = 240,
-      .min_freq_mhz = 80,
-      .light_sleep_enable = false
-    };
-    err = esp_pm_configure(&pm_config);
-
-  #elif CONFIG_IDF_TARGET_ESP32
-    esp_pm_config_esp32_t pm_config = {
-      .max_freq_mhz = 240,
-      .min_freq_mhz = 80,
-      .light_sleep_enable = false
-    };
-    err = esp_pm_configure(&pm_config);
-   
-
-  #else
-    #error "Board not known"
-  #endif
-  
+    err = esp_pm_configure(&pm_config);  
 #endif
  
   WifiManagerSetup(clear_rtc_power_on() == Energy2Shelly_ResetReason::RECONFIGURE);
