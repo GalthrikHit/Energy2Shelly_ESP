@@ -109,7 +109,10 @@ static void destroyClientObjects()
   }
 
   if (modbus1 != nullptr) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
     delete modbus1;
+#pragma GCC diagnostic pop
     modbus1 = nullptr;
   }
   if (modbus_result!=nullptr) {
