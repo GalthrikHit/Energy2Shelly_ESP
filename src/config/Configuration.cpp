@@ -1,5 +1,6 @@
 #include "Configuration.h"
 #include "../utils/utils.h"
+#include "../parsers/SunspecParser.h"
 const char* configPath = "/config.json";
 unsigned long startMillis = 0;
 unsigned long currentMillis;
@@ -19,8 +20,6 @@ String shelly_name;
 uint16_t sunspec_port_int; // default port
 uint8_t modbusdev_int;     // default device id for KSEM
 
-char tibber_rpc[2][26] = {"/data.json?node_id=","/node_data.json?node_id="}; // fixed rpc path
-
 unsigned long ledOffTime = 0;
 uint8_t led = 0;
 bool led_i = false;
@@ -32,8 +31,8 @@ IPAddress multicastIP(239, 12, 255, 254);
 
 // MODBUS settings
 IPAddress modbus_ip;
-ModbusIP modbus1;
-int16_t modbus_result[256];
+ModbusIP* modbus1 = nullptr;
+int16_t* modbus_result = nullptr;
 
 // Default electrical values and offset
 const uint8_t defaultVoltage = 230;
@@ -49,31 +48,28 @@ char rpcUser[20] = "user_1";
 bool shouldSaveConfig = false;
 bool shouldResetConfig = false;
 bool shouldupdate = false;
+bool shouldReboot = false;
 
 // flags for data sources
-bool dataMQTT = false;
-bool dataSMA = false;
-bool dataSHRDZM = false;
-bool dataHTTP = false;
-bool dataSUNSPEC = false;
-bool dataTIBBERPULSE = false;
-bool dataRCT = false;
-bool dataSMLSERIAL = false;
+input_type_enum current_input_type  = input_type_enum::NONE;
 
 // ============================================================================
 // NETWORK OBJECTS
 // ============================================================================
 
 WiFiClient wifi_client;
-PubSubClient mqtt_client(wifi_client);
+PubSubClient* mqtt_client = nullptr;
 AsyncWebServer server(80);
 AsyncWebSocket webSocket("/rpc");
 AsyncWebSocket wsConsole("/consolews");
-WiFiUDP Udp;
-HTTPClient http;
+WiFiUDP* Udp = nullptr;
+HTTPClient* http = nullptr;
 WiFiUDP UdpRPC;
 uint16_t wifi_reconnect_attempts = 0;
-
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
+unsigned long WiFi_lastScanTime = 0;
+bool WiFi_scanInProgress = false;
 // ============================================================================
 // MDNS RESPONDER HANDLES (ESP8266 only)
 // ============================================================================
@@ -82,6 +78,45 @@ uint16_t wifi_reconnect_attempts = 0;
 MDNSResponder::hMDNSService hMDNSService = 0;  // handle of the http service in the MDNS responder
 MDNSResponder::hMDNSService hMDNSService2 = 0; // handle of the shelly service in the MDNS responder
 #endif
+
+
+
+#ifdef ESP32
+#define LITTLEFS_BEGIN() LittleFS.begin(false)
+#else
+#define LITTLEFS_BEGIN() LittleFS.begin()
+#endif
+
+
+static void destroyClientObjects()
+{
+  if (mqtt_client != nullptr) {
+    mqtt_client->disconnect();
+    delete mqtt_client;
+    mqtt_client = nullptr;
+  }
+
+  if (http != nullptr) {
+    http->end();
+    delete http;
+    http = nullptr;
+  }
+
+  if (Udp != nullptr) {
+    Udp->stop();
+    delete Udp;
+    Udp = nullptr;
+  }
+
+  if (modbus1 != nullptr) {
+    delete modbus1;
+    modbus1 = nullptr;
+  }
+  if (modbus_result!=nullptr) {
+    delete modbus_result;
+    modbus_result = nullptr;
+  }
+}
 
 // Blink LED handlers
 void blinkled(int duration)
@@ -119,53 +154,134 @@ void handleblinkled()
   }
 }
 
+void remove_filtered_parameters_ram(JsonDocument filter) {
+  for (JsonPair p : filter.as<JsonObject>()) {
+    config_doc.remove(p.key());
+  }
+  config_doc.shrinkToFit();
+  DEBUG_SERIAL.println(F("Sections successfully removed from config_doc in RAM."));
+}
+
+void WiFi_processScanResult(int n) {
+  if (!config_doc["wifi"]["networks"].isNull()) {
+    config_doc["wifi"].remove("networks"); 
+  }
+  
+  JsonArray networks = config_doc["wifi"]["networks"].to<JsonArray>();
+  
+  for (int i = 0; i < n; ++i) {
+    JsonObject net = networks.add<JsonObject>();
+    
+    net["ssid"] = WiFi.SSID(i);
+    net["rssi"] = WiFi.RSSI(i);
+    net["channel"] = WiFi.channel(i);
+    
+#if defined(ESP32)
+    net["encryption"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "Open" : "Secured";
+#elif defined(ESP8266)
+    net["encryption"] = (WiFi.encryptionType(i) == ENC_TYPE_NONE) ? "Open" : "Secured";
+#endif
+  }
+}
+
+void wifi_scan()
+{
+  if (WiFi_scanInProgress) {
+    int16_t scanResult = WiFi.scanComplete();
+
+    if (scanResult >= 0) {
+        WiFi_processScanResult(scanResult);
+        WiFi.scanDelete();
+        WiFi_scanInProgress = false;
+        WiFi_lastScanTime = millis();
+    } 
+    else if (scanResult == WIFI_SCAN_FAILED) {
+      DEBUG_SERIAL.println(F("ESP8266 WiFi-Scan Error."));
+      WiFi.scanDelete();
+      WiFi_scanInProgress = false;
+      WiFi_lastScanTime = millis();
+    }
+  }
+  if (!WiFi_scanInProgress && (millis() - WiFi_lastScanTime >= WIFI_SCAN_INTERVAL)) {
+      DEBUG_SERIAL.println(F("\nStart asynchron ESP8266 WiFi-Scan..."));
+#ifdef ESP8266
+      WiFi.scanNetworks(true); // async=true
+#else      
+
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+      WiFi.scanNetworks(true, false, false); 
+#endif
+#endif
+      WiFi_scanInProgress = true;
+  }
+
+}
 
 void interprete_parameters()
 {
-  // Interpret the loaded parameters and set flags accordingly
-  input_type_enum current_input_type = static_cast<input_type_enum>(config_doc["basic"]["input_type"].as<uint32_t>());
+  JsonDocument filter;
+  config_doc.clear();
 
+  filter["shelly"]=true; filter["basic"]=true; filter["console"]=true; filter["led"]=true;
+
+  // Interpret the loaded parameters and set flags accordingly
+  load_filtered_parameters(filter);
+  serializeJsonPretty(config_doc,Serial);
+  filter.clear();
+  current_input_type = static_cast<input_type_enum>(config_doc["basic"]["input_type"].as<uint32_t>());
+  destroyClientObjects(); // Destroy unused client objects; Todo: Input change without reboot will lead to crash!
+  
   switch (current_input_type) {
     case input_type_enum::SMA:
-        dataSMA = true;
+        filter["sma"]=true;
+        load_filtered_parameters(filter);
         DEBUG_SERIAL.println(F("Enabling SMA Multicast data input"));
         break;
     case input_type_enum::SHRDZM:
-        dataSHRDZM = true;
         DEBUG_SERIAL.println(F("Enabling SHRDZM UDP data input"));
         break;
     case input_type_enum::HTTP:
-        dataHTTP = true;
+        filter["http"]=true;
+        filter["json"]=true;
+        load_filtered_parameters(filter);
         DEBUG_SERIAL.println(F("Enabling generic HTTP data input"));
         break;
     case input_type_enum::SUNSPEC:
-        dataSUNSPEC = true;
-        modbusdev_int = config_doc["sunspec"]["modbus_dev"].as<uint8_t>();
-        sunspec_port_int = config_doc["sunspec"]["modbus_port"].as<uint16_t>();
-        modbus_ip.fromString(config_doc["sunspec"]["modbus_ip"].as<const char*>()); // Todo, replace by DNS resolver for hostnames, currently only IP addresses are supported
+        filter["sunspec"]=true;
+        filter["sunspec_registers"]=true;
+        load_filtered_parameters(filter);
+        modbus_result = new int16_t[MAX_MODBUS_REGISTERS];
+        memset(modbus_result, 0, MAX_MODBUS_REGISTERS * sizeof(int16_t));
+        convert_json_to_sunspec_registers();
+        filter.clear();
+        filter["sunspec_registers"]=true;
+        remove_filtered_parameters_ram(filter);
         DEBUG_SERIAL.println(F("Enabling SUNSPEC data input"));
         break;
    case input_type_enum::TIBBERPULSE:
-        dataTIBBERPULSE = true;
+        filter["tibber"]=true;
+        load_filtered_parameters(filter);
         DEBUG_SERIAL.println(F("Enabling TIBBERPULSE data input"));
         break;
    case input_type_enum::SMLSERIAL:
-        dataSMLSERIAL = true;
         DEBUG_SERIAL.println(F("Enabling SML serial (UART) data input"));
         break;
    case input_type_enum::RCT:
-        dataRCT = true;
+        filter["rct"]=true;
+        load_filtered_parameters(filter);
         DEBUG_SERIAL.println(F("Enabling RCT Power data input"));
         break;
    case input_type_enum::MQTT:
-        dataMQTT = true;
+        filter["mqtt"]=true;
+        filter["json"]=true;
+        load_filtered_parameters(filter);
         DEBUG_SERIAL.println(F("Enabling MQTT data input"));
         break;
    case input_type_enum::NONE:
    default:
         DEBUG_SERIAL.println(F("None"));
   }
- 
+
   if (led_gpio_i!=NULL && strlen(led_gpio_i)>=4 && strcmp(led_gpio_i, "true") == 0)
   {
     led_i = true;
@@ -180,12 +296,12 @@ void interprete_parameters()
     enableConsoleOutputWeb=true;
   }
   else {
-     enableConsoleOutputWeb=false;
+    enableConsoleOutputWeb=false;
   }
- 
-  config_doc["console"]["serial_console_time"]  =    config_doc["console"]["serial_console_time"].as<int>() ? config_doc["console"]["serial_console_time"].as<int>() : (int)1;
+
+  config_doc["console"]["serial_console_time"] = config_doc["console"]["serial_console_time"].as<int>() ? config_doc["console"]["serial_console_time"].as<int>() : (int)1;
   if (config_doc["console"]["serial_console_time"].as<int>()>0) {
-     enableConsoleOutputSerial=true;
+    enableConsoleOutputSerial=true;
   }
   else {
     enableConsoleOutputSerial=false;
@@ -198,16 +314,13 @@ void interprete_parameters()
   String mac_str  = config_doc["shelly"]["shelly_mac"] | "";
   shelly_name = name_str + mac_str;
 
- if (shelly_name.length() > 128) {
+  if (shelly_name.length() > 128) {
     shelly_name = shelly_name.substring(0, 128);
- }
+  }
 
-
+config_doc.shrinkToFit();
 
 }
-
-String json_prefs_string;
-JsonDocument update_config_doc;
 
 void mergeJson(JsonVariant dst, JsonVariantConst src) {
   if (src.is<JsonObjectConst>()) {
@@ -231,9 +344,10 @@ void mergeJson(JsonVariant dst, JsonVariantConst src) {
   }
 }
 
-
-
 bool save_parameters() {
+   if (!config_doc["wifi"]["networks"].isNull()) {
+    config_doc["wifi"].remove("networks"); 
+  }
   File configFile = LittleFS.open(configPath, "w");
   if (!configFile) {
     DEBUG_SERIAL.println(F("Error: Could not open file"));
@@ -252,6 +366,10 @@ bool save_parameters() {
 
 const char DEFAULT_CONFIG_JSON[] PROGMEM = R"=====(
 {
+  "wifi": {
+    "ssid": "",
+    "password": ""
+  },
   "basic": {
     "ntp_server": "de.pool.ntp.org",
     "timezone": "CET-1CEST,M3.5.0/2,M10.5.0/3",
@@ -275,34 +393,66 @@ const char DEFAULT_CONFIG_JSON[] PROGMEM = R"=====(
   },
   "console": {
     "web_console": "true",
-    "serial_console_time": 1
+    "serial_console_time": 10
   }
 }
 )=====";
 
-void load_parameters() {
+void init_parameters() {
   config_doc.clear();
-  DeserializationError defaultError = deserializeJson(config_doc, FPSTR(DEFAULT_CONFIG_JSON));
-  if (defaultError) {
-    DEBUG_SERIAL.println(F("Error during default config initialization!"));
-  }
 
   if (LittleFS.exists(configPath)) {
     File configFile = LittleFS.open(configPath, "r");
-    if (configFile) {
-      JsonDocument fs_doc;
-      DeserializationError fsError = deserializeJson(fs_doc, configFile);
+    if (configFile) { // exists?, super!
       configFile.close();
-      if (fsError == DeserializationError::Ok) {
-        mergeJson(config_doc.to<JsonVariant>(), fs_doc.as<JsonVariantConst>());
+      return; 
       }
-    }
-  } 
-
+  }
  
+  DEBUG_SERIAL.println(F("Config file does not exist, creating default..."));
+ 
+  // else write default file
+  File configFile = LittleFS.open(configPath, "w");
+  if (configFile) {
+    configFile.print(FPSTR(DEFAULT_CONFIG_JSON)); 
+    configFile.close();
+    DEBUG_SERIAL.println(F("Default config text successfully written to LittleFS."));
+  }
 }
 
 
+
+void load_filtered_parameters(JsonVariantConst filter) {
+  if (!LittleFS.exists(configPath)) {
+    DEBUG_SERIAL.println(F("Config file does not exist for filtered loading."));
+    return;
+  }
+
+  File configFile = LittleFS.open(configPath, "r");
+  if (!configFile) {
+    DEBUG_SERIAL.println(F("Failed to open config file for filtered loading."));
+    return;
+  }
+
+  JsonDocument temp;
+  DeserializationError error;
+  if (filter.isNull()|| filter.size()==0) {
+    error = deserializeJson(config_doc, configFile);  
+  }
+  else {
+    error = deserializeJson(temp, configFile, DeserializationOption::Filter(filter));  
+    mergeJson(config_doc,temp);
+  }
+  configFile.close();
+  
+
+  if (error) {
+    DEBUG_SERIAL.print(F("Error during filtered deserialization: "));
+    DEBUG_SERIAL.println(error.f_str());
+  } else {
+    DEBUG_SERIAL.println(F("Filtered parameters successfully loaded."));
+  }
+}
 
 
 
@@ -333,79 +483,65 @@ void saveConfigCallback() {
     delay(5000);
 }
 
-void WifiManagerSetup(bool stationmode)
+
+void WifiManagerSetup(bool SW_update)
 {
+  JsonDocument filter;
   WiFi.setAutoReconnect(true);
  
-  #if defined(ESP32)
-    if (!LittleFS.begin(true)) {
-      DEBUG_SERIAL.println(F("LittleFS Mounting Error!"));
-    }
-  #elif defined(ESP8266)
-    if (!LittleFS.begin()) {
+   if (!LITTLEFS_BEGIN()) {
       DEBUG_SERIAL.println(F("LittleFS Mounting Error. Try formating..."));
+      LittleFS.end();
       LittleFS.format();
-      LittleFS.begin();
-    }
-  #endif
-  load_parameters(); // Load parameters from LittleFS
- 
-
-  static WiFiManager wifiManager;
-  wifiManager.setDebugOutput(false);
-  wifiManager.setShowStaticFields(true);
-
-  wifiManager.setTitle(String("Energy2Shelly for ESP ") + VERSION_BUILD);
-  wifiManager.setSaveConfigCallback(saveConfigCallback);
-  wifiManager.setConfigPortalTimeout(180);
-  std::vector<const char *> usermenu = {"wifi","info","exit","sep","update"};
-  wifiManager.setMenu(usermenu);
-  if (stationmode)
+      LITTLEFS_BEGIN();
+   }
+  init_parameters();
+  filter["wifi"]=true; filter["shelly"]=true;
+  load_filtered_parameters(filter); 
+  if (config_doc["wifi"]["ssid"] == "") // check for valid WiFi credentials, if not present, start config portal
   {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin();
-    unsigned long startAttemptTime = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 15000)
-    {
-      delay(500);
-      Serial.print(".");
-    }
-    update_reset_reason(Energy2Shelly_ResetReason::OTA_UPDATE);
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      shouldSaveConfig=true;      
-      wifiManager.startWebPortal();
-      startAttemptTime = millis();
-      while (wifiManager.getWebPortalActive())
-      {
-        wifiManager.process();
-        delay(10);
-      }
-     
-    }
+      DEBUG_SERIAL.println(F("No WiFi credentials found, starting config portal..."));
+      WiFi.mode(WIFI_AP_STA);
+      WiFi.softAP("Energy2Shelly", "");
+
+#if defined(ESP32)
+      WiFi.disconnect(false); 
+      WiFi.setSleep(false);       
+#endif
   }
-  else
-  {
-    if (!wifiManager.autoConnect("Energy2Shelly"))
-    {
-      DEBUG_SERIAL.println(F("failed to connect and hit timeout"));
-     
-      delay(3000);
-      ESP.restart();
-      delay(5000);
-    }
+  else { //try to connect to WiFi with stored credentials
+      WiFi.mode(WIFI_STA);
+      WiFi.begin(config_doc["wifi"]["ssid"].as<const char*>(), config_doc["wifi"]["password"].as<const char*>());
+      unsigned long startAttemptTime = millis();
+      while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 15000)
+      {
+        delay(500);
+        DEBUG_SERIAL.print(".");
+      }
+      if (WiFi.status() != WL_CONNECTED) // if connection failed, start config portal
+      {
+        WiFi.mode(WIFI_AP_STA);
+        WiFi.softAP("Energy2Shelly", "");
+        DEBUG_SERIAL.println(F("Failed to connect to WiFi, starting config portal..."));
+#if defined(ESP32)
+        WiFi.disconnect(false);
+        WiFi.setSleep(false);       
+#endif
+
+      }
   }
   
-  DEBUG_SERIAL.println(F("connected"));
- 
+   
   // Set Shelly ID to ESP's MAC address by default
   String currentMac = config_doc["shelly"]["shelly_mac"].as<String>();
-  if (currentMac == "null" || currentMac.length() == 0) {
-    
+ 
+  if (currentMac == "null" || currentMac.length() == 0) {// at least first time boot setup
+    filter.clear();
+    load_filtered_parameters(filter);//load all 
     String macStr = WiFi.macAddress(); 
-    macStr.replace(":", "");        
-    
-    config_doc["shelly"]["shelly_mac"] = macStr;  
+    macStr.replace(":", "");            
+    config_doc["shelly"]["shelly_mac"] = macStr;
+    save_parameters();
   }
 
   interprete_parameters();
@@ -413,6 +549,32 @@ void WifiManagerSetup(bool stationmode)
   DEBUG_SERIAL.println(F("local ip"));
   DEBUG_SERIAL.println(WiFi.localIP());
 }
+
+
+String read_config_as_string() {
+  if (!LittleFS.exists(configPath)) {
+    DEBUG_SERIAL.println(F("Config file does not exist."));
+    return "";
+  }
+
+  File configFile = LittleFS.open(configPath, "r");
+  if (!configFile) {
+    DEBUG_SERIAL.println(F("Failed to open config file for reading."));
+    return "";
+  }
+
+  String jsonString = "";
+  
+  jsonString.reserve(configFile.size());
+
+  while (configFile.available()) {
+    jsonString += (char)configFile.read();
+  }
+
+  configFile.close();
+  return jsonString;
+}
+
 
 void setupMdns()
 {

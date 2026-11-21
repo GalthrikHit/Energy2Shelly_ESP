@@ -51,7 +51,14 @@ void reset_esp_to_default_and_reboot()
     WiFi.disconnect(true);      
   #endif
 
-  LittleFS.format(); // format allways, to ensure a clean state
+  
+#ifdef ESP32  
+  LittleFS.begin(true);
+  LittleFS.format();
+  LittleFS.end();  
+#else
+  LittleFS.format(); 
+#endif
 
   #ifdef ESP32
   // Erase NVS to remove all stored WiFi credentials and other settings
@@ -348,6 +355,15 @@ void status_print(void)
     break;
     case Energy2Shelly_ResetReason::OTA_UPDATE:
     DEBUG_SERIAL.print(F("OTA reset"));
+    break;
+  case Energy2Shelly_ResetReason::RECONFIGURE:
+    DEBUG_SERIAL.print(F("Reconfigure reset"));
+    break;
+  case Energy2Shelly_ResetReason::AP_TIMEOUT:
+    DEBUG_SERIAL.print(F("AP timeout reset"));
+    break;
+  case Energy2Shelly_ResetReason::REBOOT_REQUEST:
+    DEBUG_SERIAL.print(F("Reboot request reset"));
     break;
   default:
     DEBUG_SERIAL.print(F("Unknown reset reason"));

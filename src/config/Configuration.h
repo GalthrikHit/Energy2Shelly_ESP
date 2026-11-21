@@ -3,11 +3,6 @@
 
 #include <Arduino.h>
 
-// Fix WifiManager/WebServer conflicts
-#ifndef ESP32
-  #define WEBSERVER_H "fix WifiManager conflict"
-#endif
-
 // Platform-specific includes
 #ifdef ESP32
   #include <HTTPClient.h>
@@ -23,12 +18,24 @@
 // Web & JSON libraries
 #include <ArduinoJson.h>
 #define WM_MDNS  
-#include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <WiFiClient.h>
+
+// No deprecated warnings for ESPAsyncWebserver library
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <ESPAsyncWebServer.h>
+#pragma GCC diagnostic pop
+
 #include <WiFiUdp.h>
-#include <ModbusIP_ESP8266.h>
+
+// No deprecated warnings for Modbus library
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <ModbusIP_ESP8266.h> 
+#pragma GCC diagnostic pop
+
+#include <DNSServer.h>
 
 // File system
 #include <LittleFS.h>
@@ -229,6 +236,8 @@ enum class input_type_enum : uint32_t
 #undef X_LAST
 };
 
+extern const char* configPath;
+
 // Data source and server settings
 #define reset_password (config_doc["basic"]["reset_password"]| "")
 #define input_type (config_doc["basic"]["input_type"] | "")
@@ -238,7 +247,7 @@ enum class input_type_enum : uint32_t
 #define power_offset (config_doc["basic"]["power_offset"].as<double_t>())
 
 #define mqtt_server (config_doc["mqtt"]["mqtt_server"]|"")
-#define mqtt_port (config_doc["mqtt"]["mqtt_port"]|"")
+#define mqtt_port (config_doc["mqtt"]["mqtt_port"].as<uint16_t>() | (uint16_t)1883)
 #define mqtt_topic (config_doc["mqtt"]["mqtt_topic"]|"")
 #define mqtt_user (config_doc["mqtt"]["mqtt_user"]|"")
 #define mqtt_passwd (config_doc["mqtt"]["mqtt_password"]|"")
@@ -280,10 +289,10 @@ extern uint8_t modbusdev_int;
 #define tibber_host config_doc["tibber"]["tibber_host"].as<const char*>()
 #define tibber_user config_doc["tibber"]["tibber_user"].as<const char*>()
 #define tibber_password config_doc["tibber"]["tibber_password"].as<const char*>()
-#define tibber_nodeid config_doc["tibber"]["tibber_nodeid"].as<const char*>()
+#define tibber_nodeid config_doc["tibber"]["tibber_nodeid"].as<uint8_t>()
 #define query_period_tibber_u32 config_doc["tibber"]["query_period"].as<uint32_t>()
 
-extern char tibber_rpc[2][26];
+extern const char* tibber_rpc[];
 
 // SML via UART (IR reading head connected directly to the ESP)
 #define sml_rx_pin config_doc["smlserial"]["rx_pin"].as<int>()
@@ -303,7 +312,7 @@ extern char tibber_rpc[2][26];
   #endif
 #endif
 // LED settings
-#define led_gpio config_doc["led"]["led_gpio"].as<const char*>()
+#define led_gpio config_doc["led"]["led_gpio"].as<uint8_t>()
 #define led_gpio_i config_doc["led"]["led_gpio_i"].as<const char*>()
 
 extern unsigned long ledOffTime;
@@ -317,8 +326,9 @@ extern IPAddress multicastIP;
 
 // MODBUS settings
 extern IPAddress modbus_ip;
-extern ModbusIP modbus1;
-extern int16_t modbus_result[256];
+#define MAX_MODBUS_REGISTERS 256
+extern int16_t *modbus_result;
+extern ModbusIP* modbus1;
 
 // Default electrical values and offset
 extern const uint8_t defaultVoltage;
@@ -335,31 +345,33 @@ extern char rpcUser[20];
 extern bool shouldSaveConfig;
 extern bool shouldResetConfig;
 extern bool shouldupdate;
+extern bool shouldReboot;
 
 // flags for data sources
-extern bool dataMQTT;
-extern bool dataSMA;
-extern bool dataSHRDZM;
-extern bool dataHTTP;
-extern bool dataSUNSPEC;
-extern bool dataTIBBERPULSE;
-extern bool dataRCT;
-extern bool dataSMLSERIAL;
+extern input_type_enum current_input_type;
 
 // ============================================================================
 // NETWORK OBJECTS
 // ============================================================================
 
 extern WiFiClient wifi_client;
-extern PubSubClient mqtt_client;
+extern PubSubClient* mqtt_client;
 extern AsyncWebServer server;
 extern AsyncWebSocket webSocket;
 extern uint16_t wifi_reconnect_attempts;
 
-extern WiFiUDP Udp;
-extern HTTPClient http;
+extern WiFiUDP* Udp;
+extern HTTPClient* http;
 extern WiFiUDP UdpRPC;
 extern void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+
+
+extern DNSServer dnsServer;
+extern const byte DNS_PORT;
+
+extern unsigned long WiFi_lastScanTime;
+#define WIFI_SCAN_INTERVAL 15000 
+extern bool WiFi_scanInProgress;
 
 // Platform-specific UDP print macro
 #ifdef ESP32
@@ -390,7 +402,9 @@ void WifiManagerSetup(bool stationmode);
 void setupMdns();
 void interprete_parameters();
 bool save_parameters();
-void load_parameters();
+void load_filtered_parameters(JsonVariantConst filter);
+String read_config_as_string();
 void mergeJson(JsonObject target, JsonObjectConst source);
-
+void remove_filtered_parameters_ram(JsonVariantConst filter);
+void wifi_scan();
 #endif // CONFIGURATION_H
