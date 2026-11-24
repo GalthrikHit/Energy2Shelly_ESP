@@ -541,6 +541,7 @@ void setup(void)
       break;
 
       case input_type_enum::HTTP:
+      case input_type_enum::TIBBERPULSE:
       http = new HTTPClient();
       http->useHTTP10(true);
       break;
